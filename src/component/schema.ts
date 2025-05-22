@@ -6,5 +6,7 @@ export default defineSchema({
     room: v.string(),
     user: v.string(),
     updated: v.number(),
-  }).index("room_user", ["room", "user"]),
+  })
+    .index("room_user", ["room", "user"]) // TODO: not currently used
+    .index("room_updated", ["room", "updated"]),
 });

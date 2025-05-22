@@ -3,8 +3,9 @@ import { Presence } from "../../src/client";
 import { components } from "./_generated/api";
 import { v } from "convex/values";
 
-const presence = new Presence(components.presence);
+export const presence = new Presence(components.presence);
 
+// TODO: get rid of these since they're just wrappers
 export const heartbeat = mutation({
   args: { room: v.string(), user: v.string() },
   handler: async (ctx, { room, user }) => {

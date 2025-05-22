@@ -29,7 +29,6 @@ export const heartbeat = mutation({
   },
 });
 
-// TODO: make sure we don't hit limits
 export const list = query({
   args: {
     room: v.string(),
@@ -37,7 +36,8 @@ export const list = query({
   handler: async (ctx, { room }) => {
     return await ctx.db
       .query("presence")
-      .withIndex("room_user", (q) => q.eq("room", room))
-      .collect();
+      .withIndex("room_updated", (q) => q.eq("room", room))
+      .order("desc")
+      .take(100);
   },
 });
