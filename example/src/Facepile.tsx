@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { isOnline } from "../../src/react";
+import "./Facepile.css";
 
 interface Presence {
   _id: string;
@@ -27,7 +28,7 @@ export default function FacePile({ othersPresence }: FacePileProps): JSX.Element
   };
 
   return (
-    <div className="facepile" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+    <div className="presence-list">
       {othersPresence
         .map((presence) => ({
           ...presence,
@@ -36,12 +37,7 @@ export default function FacePile({ othersPresence }: FacePileProps): JSX.Element
         .map((presence) => (
           <div
             key={presence._id}
-            style={{
-              padding: "8px",
-              backgroundColor: presence.online ? "#e6ffe6" : "#ffe6e6",
-              borderRadius: "4px",
-              width: "100%",
-            }}
+            className={`presence-card ${presence.online ? "online" : "offline"}`}
           >
             <div>
               <strong>User:</strong> {presence.user}
