@@ -6,10 +6,7 @@ import { RunMutationCtx, RunQueryCtx, UseApi } from "./utils.js";
 export class Presence {
   constructor(private component: UseApi<typeof api>) {}
 
-  async heartbeat(
-    ctx: RunMutationCtx,
-    { room, user }: { room: string; user: string }
-  ) {
+  async heartbeat(ctx: RunMutationCtx, { room, user }: { room: string; user: string }) {
     return ctx.runMutation(this.component.public.heartbeat, { room, user });
   }
 

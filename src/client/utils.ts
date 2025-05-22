@@ -33,12 +33,6 @@ export type UseApi<API> = Expand<{
     infer FReturnType,
     infer FComponentPath
   >
-    ? FunctionReference<
-        FType,
-        "internal",
-        OpaqueIds<FArgs>,
-        OpaqueIds<FReturnType>,
-        FComponentPath
-      >
+    ? FunctionReference<FType, "internal", OpaqueIds<FArgs>, OpaqueIds<FReturnType>, FComponentPath>
     : UseApi<API[mod]>;
 }>;

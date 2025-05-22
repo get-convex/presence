@@ -35,17 +35,11 @@ const presence = new Presence(components.presence);
 ...
 
 ```typescript
-const [myPresence, othersPresence, updateMyPresence] = usePresence(
-  userId,
-  roomId,
-  initialData
-);
+const [myPresence, othersPresence, updateMyPresence] = usePresence(userId, roomId, initialData);
 ```
 
 ```typescript
-const online = othersPresence.filter(
-  (presence) => Date.now() - presence.updated < 10000
-);
+const online = othersPresence.filter((presence) => Date.now() - presence.updated < 10000);
 ```
 
 ```typescript

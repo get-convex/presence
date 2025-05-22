@@ -5,12 +5,7 @@ import tseslint from "typescript-eslint";
 export default [
   { files: ["src/**/*.{js,mjs,cjs,ts,tsx}"] },
   {
-    ignores: [
-      "dist/**",
-      "eslint.config.js",
-      "**/_generated/",
-      "node10stubs.mjs",
-    ],
+    ignores: ["dist/**", "eslint.config.js", "**/_generated/", "node10stubs.mjs"],
   },
   {
     languageOptions: {
