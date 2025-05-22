@@ -2,7 +2,7 @@ import { useState } from "react";
 import FacePile from "./Facepile";
 import usePresence from "./hooks/usePresence";
 
-export default function App() {
+export default function App(): JSX.Element {
   const [name] = useState(() => "User " + Math.floor(Math.random() * 10000));
   const othersPresence = usePresence("chat-room", name);
 

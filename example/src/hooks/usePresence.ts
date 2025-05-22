@@ -5,8 +5,12 @@ import { api } from "../../convex/_generated/api";
 const HEARTBEAT_PERIOD = 5000;
 const OLD_MS = 10000;
 
-// TODO: i removed single flighting
-// TODO: i removed data too and need to update comments etc
+interface Presence {
+  _id: string;
+  user: string;
+  room: string;
+  updated: number;
+}
 
 /**
  * usePresence is a React hook for reading & writing presence data.
@@ -31,7 +35,7 @@ const OLD_MS = 10000;
  * @returns A list with 1. this user's data; 2. A list of other users' data;
  * 3. function to update this user's data. It will do a shallow merge.
  */
-export default (room, user) => {
+export default function usePresence(room: string, user: string): Presence[] | undefined {
   let presence = useQuery(api.example.list, { room });
   if (presence) {
     presence = presence.filter((p) => p.user !== user);
@@ -48,7 +52,7 @@ export default (room, user) => {
   }, [presence, heartbeat, room, user]);
 
   return presence;
-};
+}
 
 /**
  * isOnline determines a user's online status by how recently they've updated.
@@ -56,6 +60,6 @@ export default (room, user) => {
  * @param presence - The presence data for one user returned from usePresence.
  * @returns True if the user has updated their presence recently.
  */
-export const isOnline = (presence) => {
+export const isOnline = (presence: Presence): boolean => {
   return Date.now() - presence.updated < OLD_MS;
 };
