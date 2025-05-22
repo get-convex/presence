@@ -27,10 +27,7 @@ export default function usePresence(
   room: string,
   user: string
 ): State[] | undefined {
-  let state = useQuery(listFn, { room });
-  if (state) {
-    state = state.filter((p) => p.user !== user);
-  }
+  const state = useQuery(listFn, { room });
   const heartbeat = useMutation(heartbeatFn);
 
   useEffect(() => {

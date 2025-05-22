@@ -11,12 +11,12 @@ interface Presence {
 }
 
 interface FacePileProps {
-  othersPresence: Presence[];
+  presenceState: Presence[];
 }
 
 const UPDATE_MS = 1000;
 
-export default function FacePile({ othersPresence }: FacePileProps): JSX.Element {
+export default function FacePile({ presenceState: presenceState }: FacePileProps): JSX.Element {
   const [, setNow] = useState(Date.now());
   useEffect(() => {
     const intervalId = setInterval(() => setNow(Date.now()), UPDATE_MS);
@@ -29,7 +29,7 @@ export default function FacePile({ othersPresence }: FacePileProps): JSX.Element
 
   return (
     <div className="presence-list">
-      {othersPresence
+      {presenceState
         .map((presence) => ({
           ...presence,
           online: isOnline(presence),
