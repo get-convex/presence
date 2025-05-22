@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { isOnline } from "./hooks/usePresence";
+import { isOnline } from "../../src/react";
 
 interface Presence {
   _id: string;
   user: string;
+  room: string;
   updated: number;
   online?: boolean;
 }

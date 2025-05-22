@@ -1,6 +1,14 @@
+"use client";
+
+/// React helpers for presence.
+
 import { useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { api } from "../component/_generated/api.js";
+
+if (typeof window === "undefined") {
+  throw new Error("this is frontend code, but it's running somewhere else!");
+}
 
 const HEARTBEAT_PERIOD = 5000;
 const OLD_MS = 10000;

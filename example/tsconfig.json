@@ -13,6 +13,7 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    "types": ["vite/client"],
 
     /* This should only be used in this example. Real apps should not attempt
      * to compile TypeScript because differences between tsconfig.json files can
