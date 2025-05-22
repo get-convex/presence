@@ -37,7 +37,7 @@ export default function usePresence(
     }, HEARTBEAT_PERIOD);
     // Whenever we have any data change, it will get cleared.
     return () => clearInterval(intervalId);
-  }, [state, heartbeat, room, user]);
+  }, [heartbeat, room, user]);
 
   return state;
 }
