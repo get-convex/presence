@@ -45,54 +45,52 @@ export default function FacePile({ presenceState: presenceState }: FacePileProps
   const hidden = sortedPresence.slice(5);
 
   return (
-    <div
-      className="facepile-container"
-      style={{ display: "flex", alignItems: "center", position: "relative" }}
-    >
-      {visible.map((presence, idx, arr) => (
-        <div
-          key={presence._id}
-          className={`facepile-avatar${presence.online ? " online" : " offline"}`}
-          tabIndex={0}
-          style={{ "--z": arr.length - idx } as React.CSSProperties}
-          data-z={arr.length - idx}
-        >
-          <span role="img" aria-label="user">
-            😊
-          </span>
-          <span className="facepile-tooltip">
-            <div className="facepile-tooltip-user">{presence.user}</div>
-            <div className="facepile-tooltip-status">
-              {presence.online ? "Online now" : getTimeAgo(presence.updated)}
-            </div>
-          </span>
-        </div>
-      ))}
-      {hidden.length > 0 && (
-        <div className="facepile-more-container">
-          <div className="facepile-avatar facepile-more" tabIndex={0}>
-            <span className="facepile-more-count">+{hidden.length}</span>
+    <div className="facepile-container">
+      <div className="facepile-avatars">
+        {visible.map((presence, idx, arr) => (
+          <div
+            key={presence._id}
+            className={`facepile-avatar${presence.online ? " online" : " offline"}`}
+            tabIndex={0}
+            style={{ "--z": arr.length - idx } as React.CSSProperties}
+          >
+            <span role="img" aria-label="user">
+              😊
+            </span>
+            <span className="facepile-tooltip">
+              <div className="facepile-tooltip-user">{presence.user}</div>
+              <div className="facepile-tooltip-status">
+                {presence.online ? "Online now" : getTimeAgo(presence.updated)}
+              </div>
+            </span>
           </div>
-          <div className="facepile-dropdown">
-            <div className="facepile-dropdown-header">LAST VIEWED BY</div>
-            {hidden.slice(0, 10).map((presence) => (
-              <div key={presence._id} className="facepile-dropdown-row">
-                <div className="facepile-dropdown-emoji">
-                  <span role="img" aria-label="user">
-                    😊
-                  </span>
-                </div>
-                <div className="facepile-dropdown-info">
-                  <div className="facepile-dropdown-user">{presence.user}</div>
-                  <div className="facepile-dropdown-status">
-                    {presence.online ? "Online now" : getTimeAgo(presence.updated)}
+        ))}
+        {hidden.length > 0 && (
+          <div className="facepile-more-container">
+            <div className="facepile-avatar facepile-more" tabIndex={0}>
+              <span className="facepile-more-count">+{hidden.length}</span>
+            </div>
+            <div className="facepile-dropdown">
+              <div className="facepile-dropdown-header">LAST VIEWED BY</div>
+              {hidden.slice(0, 10).map((presence) => (
+                <div key={presence._id} className="facepile-dropdown-row">
+                  <div className="facepile-dropdown-emoji">
+                    <span role="img" aria-label="user">
+                      😊
+                    </span>
+                  </div>
+                  <div className="facepile-dropdown-info">
+                    <div className="facepile-dropdown-user">{presence.user}</div>
+                    <div className="facepile-dropdown-status">
+                      {presence.online ? "Online now" : getTimeAgo(presence.updated)}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
