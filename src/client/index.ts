@@ -4,11 +4,6 @@ import { api } from "../component/_generated/api.js";
 import { RunMutationCtx, RunQueryCtx, UseApi } from "./utils.js";
 import { httpActionGeneric, HttpRouter } from "convex/server";
 
-// TODO: don't need to heartbeat if there's been typing etc
-// TODO: support logged in an anonymous users
-// TODO: have states like "typing" etc
-// TODO: add auth, e.g., to disconnect
-
 export class Presence {
   constructor(private component: UseApi<typeof api>) {}
 

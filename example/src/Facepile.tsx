@@ -1,16 +1,8 @@
 import "./Facepile.css";
-
-// TODO: do i need this reimplementation?
-interface Presence {
-  _id: string;
-  user: string;
-  room: string;
-  online: boolean;
-  lastDisconnected: number;
-}
+import { State } from "../../src/react";
 
 interface FacePileProps {
-  presenceState: Presence[];
+  presenceState: State[];
 }
 
 export default function FacePile({ presenceState: presenceState }: FacePileProps): JSX.Element {

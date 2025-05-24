@@ -5,7 +5,9 @@ import { v } from "convex/values";
 
 export const presence = new Presence(components.presence);
 
-// TODO: ideally the client wouldn't have to redefine all this stuff
+// TODO: we should just allow you to call component functions directly from the
+// client so you don't have to redefine all this stuff
+
 export const heartbeat = mutation({
   args: { room: v.string(), user: v.string(), interval: v.number() },
   handler: async (ctx, { room, user, interval }) => {

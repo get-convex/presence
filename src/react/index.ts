@@ -1,6 +1,6 @@
 "use client";
 
-/// React helpers for presence.
+/// React hook for maintaining presence state.
 
 import { useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
@@ -10,11 +10,12 @@ if (typeof window === "undefined") {
   throw new Error("this is frontend code, but it's running somewhere else!");
 }
 
-interface State {
+export interface State {
   _id: string;
   user: string;
   room: string;
-  updated: number;
+  online: boolean;
+  lastDisconnected: number;
 }
 
 export default function usePresence(
@@ -36,6 +37,7 @@ export default function usePresence(
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
+    // Continually schedule heartbeats.
     const startHeartbeat = () => {
       void heartbeat({ room, user, interval });
       if (intervalId) {
@@ -53,11 +55,10 @@ export default function usePresence(
       }
     };
 
+    // Start/stop heartbeats based on visibility.
     if (!document.hidden) {
       startHeartbeat();
     }
-
-    // Handle visibility changes
     const handleVisibilityChange = () => {
       if (document.hidden) {
         stopHeartbeat();
@@ -75,13 +76,11 @@ export default function usePresence(
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
 
-    // Cleanup
+    // Cleanup on unmount.
     return () => {
       stopHeartbeat();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("beforeunload", handleBeforeUnload);
-
-      // Also disconnect when component unmounts (user navigates away)
       void disconnect({ room, user });
     };
   }, [heartbeat, disconnect, room, user]);

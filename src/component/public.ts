@@ -6,8 +6,6 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server.js";
 import { api } from "./_generated/api.js";
 
-// TODO: have a global presence/beacon handler across components
-
 export const heartbeat = mutation({
   args: {
     room: v.string(),
