@@ -4,45 +4,72 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server.js";
+import { api } from "./_generated/api.js";
 
-// TODO: send expires at to be 2.5x the heartbeat period
 // TODO: have a global presence/beacon handler across components
 
 export const heartbeat = mutation({
   args: {
     room: v.string(),
     user: v.string(),
+    interval: v.optional(v.number()),
   },
-  handler: async (ctx, { room, user }) => {
-    const presence = await ctx.db
+  handler: async (ctx, { room, user, interval = 10000 }) => {
+    const state = await ctx.db
       .query("presence")
       .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
       .unique();
-    if (!presence) {
+
+    if (!state) {
       await ctx.db.insert("presence", {
         room,
         user,
-        updated: Date.now(),
+        online: true,
+        lastDisconnected: 0,
+      });
+    } else if (!state.online) {
+      await ctx.db.patch(state._id, {
+        online: true,
+        lastDisconnected: 0,
       });
     } else {
-      await ctx.db.patch(presence._id, {
-        updated: Date.now(),
-      });
+      const scheduledDisconnect = await ctx.db
+        .query("scheduledDisconnections")
+        .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
+        .unique();
+      if (!scheduledDisconnect) {
+        throw new Error("state online with no scheduled disconnect");
+      }
+      await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
+      await ctx.db.delete(scheduledDisconnect._id);
     }
+
+    // Schedule disconnect if no heartbeat for 2.5x heartbeat period and no graceful disconnect.
+    const scheduledDisconnect = await ctx.scheduler.runAfter(
+      interval * 2.5,
+      api.public.disconnect,
+      {
+        room,
+        user,
+      }
+    );
+    await ctx.db.insert("scheduledDisconnections", {
+      room,
+      user,
+      scheduledDisconnect,
+    });
   },
 });
 
-// TODO: we don't want to subscribe on last updated since that changes all the time. just subscribe on online + last seen
-// TODO: also don't read updated in the query since that'll get invalidated a lot. have a scheduled job to update the online status
 export const list = query({
   args: {
     room: v.string(),
   },
   handler: async (ctx, { room }) => {
+    // TODO: need some way of ordering before take(100)
     return await ctx.db
       .query("presence")
-      .withIndex("room_updated", (q) => q.eq("room", room))
-      .order("desc")
+      .withIndex("room_user", (q) => q.eq("room", room))
       .take(100);
   },
 });
@@ -52,8 +79,31 @@ export const disconnect = mutation({
     room: v.string(),
     user: v.string(),
   },
-  handler: async (_ctx, { room, user }) => {
-    // TODO implementation of disconnect
-    console.log("disconnect", room, user);
+  handler: async (ctx, { room, user }) => {
+    const state = await ctx.db
+      .query("presence")
+      .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
+      .unique();
+    if (!state) {
+      return;
+    }
+    if (!state.online) {
+      return;
+    }
+
+    const scheduledDisconnect = await ctx.db
+      .query("scheduledDisconnections")
+      .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
+      .unique();
+    if (!scheduledDisconnect) {
+      throw new Error("state online with no scheduled disconnect");
+    }
+    await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
+    await ctx.db.delete(scheduledDisconnect._id);
+
+    await ctx.db.patch(state._id, {
+      online: false,
+      lastDisconnected: Date.now(),
+    });
   },
 });

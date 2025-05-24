@@ -12,8 +12,11 @@ import { httpActionGeneric, HttpRouter } from "convex/server";
 export class Presence {
   constructor(private component: UseApi<typeof api>) {}
 
-  async heartbeat(ctx: RunMutationCtx, { room, user }: { room: string; user: string }) {
-    return ctx.runMutation(this.component.public.heartbeat, { room, user });
+  async heartbeat(
+    ctx: RunMutationCtx,
+    { room, user, interval }: { room: string; user: string; interval: number }
+  ) {
+    return ctx.runMutation(this.component.public.heartbeat, { room, user, interval });
   }
 
   async list(ctx: RunQueryCtx, { room }: { room: string }) {

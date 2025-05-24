@@ -1,12 +1,12 @@
-import { isOnline } from "../../src/react";
 import "./Facepile.css";
 
+// TODO: do i need this reimplementation?
 interface Presence {
   _id: string;
   user: string;
   room: string;
-  updated: number;
-  online?: boolean;
+  online: boolean;
+  lastDisconnected: number;
 }
 
 interface FacePileProps {
@@ -27,7 +27,7 @@ export default function FacePile({ presenceState: presenceState }: FacePileProps
   const sortedPresence = presenceState
     .map((presence) => ({
       ...presence,
-      online: isOnline(presence),
+      online: presence.online,
     }))
     .sort((a, b) => (b.online ? 1 : 0) - (a.online ? 1 : 0));
 
@@ -50,7 +50,7 @@ export default function FacePile({ presenceState: presenceState }: FacePileProps
             <span className="facepile-tooltip">
               <div className="facepile-tooltip-user">{presence.user}</div>
               <div className="facepile-tooltip-status">
-                {presence.online ? "Online now" : getTimeAgo(presence.updated)}
+                {presence.online ? "Online now" : getTimeAgo(presence.lastDisconnected)}
               </div>
             </span>
           </div>
@@ -72,7 +72,7 @@ export default function FacePile({ presenceState: presenceState }: FacePileProps
                   <div className="facepile-dropdown-info">
                     <div className="facepile-dropdown-user">{presence.user}</div>
                     <div className="facepile-dropdown-status">
-                      {presence.online ? "Online now" : getTimeAgo(presence.updated)}
+                      {presence.online ? "Online now" : getTimeAgo(presence.lastDisconnected)}
                     </div>
                   </div>
                 </div>

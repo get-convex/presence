@@ -5,10 +5,11 @@ import { v } from "convex/values";
 
 export const presence = new Presence(components.presence);
 
+// TODO: ideally the client wouldn't have to redefine all this stuff
 export const heartbeat = mutation({
-  args: { room: v.string(), user: v.string() },
-  handler: async (ctx, { room, user }) => {
-    return await presence.heartbeat(ctx, { room, user });
+  args: { room: v.string(), user: v.string(), interval: v.number() },
+  handler: async (ctx, { room, user, interval }) => {
+    return await presence.heartbeat(ctx, { room, user, interval });
   },
 });
 

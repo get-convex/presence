@@ -10,9 +10,6 @@ if (typeof window === "undefined") {
   throw new Error("this is frontend code, but it's running somewhere else!");
 }
 
-const HEARTBEAT_PERIOD = 15000;
-const OLD_MS = 10000;
-
 interface State {
   _id: string;
   user: string;
@@ -22,10 +19,15 @@ interface State {
 
 export default function usePresence(
   listFn: FunctionReference<"query", "public", { room: string }, State[]>,
-  heartbeatFn: FunctionReference<"mutation", "public", { room: string; user: string }>,
+  heartbeatFn: FunctionReference<
+    "mutation",
+    "public",
+    { room: string; user: string; interval: number }
+  >,
   disconnectFn: FunctionReference<"mutation", "public", { room: string; user: string }>,
   room: string,
-  user: string
+  user: string,
+  interval: number = 10000
 ): State[] | undefined {
   const state = useQuery(listFn, { room });
   const heartbeat = useMutation(heartbeatFn);
@@ -35,13 +37,13 @@ export default function usePresence(
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
     const startHeartbeat = () => {
-      void heartbeat({ room, user });
+      void heartbeat({ room, user, interval });
       if (intervalId) {
         clearInterval(intervalId);
       }
       intervalId = setInterval(() => {
-        void heartbeat({ room, user });
-      }, HEARTBEAT_PERIOD);
+        void heartbeat({ room, user, interval });
+      }, interval);
     };
 
     const stopHeartbeat = () => {
@@ -86,13 +88,3 @@ export default function usePresence(
 
   return state;
 }
-
-/**
- * isOnline determines a user's online status by how recently they've updated.
- *
- * @param state - The presence data for one user returned from usePresence.
- * @returns True if the user has updated their presence recently.
- */
-export const isOnline = (state: State): boolean => {
-  return Date.now() - state.updated < OLD_MS;
-};

@@ -5,8 +5,13 @@ export default defineSchema({
   presence: defineTable({
     room: v.string(),
     user: v.string(),
-    updated: v.number(),
-  })
-    .index("room_user", ["room", "user"]) // TODO: not currently used
-    .index("room_updated", ["room", "updated"]),
+    online: v.boolean(),
+    lastDisconnected: v.number(),
+  }).index("room_user", ["room", "user"]),
+
+  scheduledDisconnections: defineTable({
+    room: v.string(),
+    user: v.string(),
+    scheduledDisconnect: v.id("_scheduled_functions"),
+  }).index("room_user", ["room", "user"]),
 });
