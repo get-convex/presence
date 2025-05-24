@@ -15,7 +15,6 @@ export default function App(): JSX.Element {
 
   return (
     <main>
-      <h1>Presence</h1>
       <FacePile presenceState={presenceState ?? []} />
     </main>
   );
