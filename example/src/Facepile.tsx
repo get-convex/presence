@@ -38,7 +38,6 @@ function Avatar({ presence, index, total }: { presence: State; index: number; to
 function Dropdown({ users }: { users: State[] }) {
   return (
     <div className="dropdown">
-      <div className="dropdown-header">LAST VIEWED BY</div>
       {users.slice(0, 10).map((presence) => (
         <div key={presence._id} className="dropdown-row">
           <div className="dropdown-emoji">
@@ -74,7 +73,7 @@ export default function FacePile({ presenceState }: { presenceState: State[] }):
         {hidden.length > 0 && (
           <div className="more-container">
             <div className="avatar more" tabIndex={0}>
-              <span className="more-count">+{hidden.length}</span>
+              +{hidden.length}
             </div>
             <Dropdown users={hidden} />
           </div>
