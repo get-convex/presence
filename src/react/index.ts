@@ -85,5 +85,9 @@ export default function usePresence(
     };
   }, [heartbeat, disconnect, room, user]);
 
-  return state;
+  return state?.sort((a, b) => {
+    if (a.user === user) return -1;
+    if (b.user === user) return 1;
+    return 0;
+  });
 }
