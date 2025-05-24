@@ -29,6 +29,12 @@ declare const fullApi: ApiFromModules<{
 }>;
 export type Mounts = {
   public: {
+    disconnect: FunctionReference<
+      "mutation",
+      "public",
+      { room: string; user: string },
+      any
+    >;
     heartbeat: FunctionReference<
       "mutation",
       "public",

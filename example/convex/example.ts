@@ -5,7 +5,6 @@ import { v } from "convex/values";
 
 export const presence = new Presence(components.presence);
 
-// TODO: get rid of these since they're just wrappers
 export const heartbeat = mutation({
   args: { room: v.string(), user: v.string() },
   handler: async (ctx, { room, user }) => {
@@ -19,5 +18,12 @@ export const list = query({
     return await presence.list(ctx, {
       room,
     });
+  },
+});
+
+export const disconnect = mutation({
+  args: { room: v.string(), user: v.string() },
+  handler: async (ctx, { room, user }) => {
+    return await presence.disconnect(ctx, { room, user });
   },
 });
