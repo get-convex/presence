@@ -64,7 +64,7 @@ export const list = query({
     room: v.string(),
   },
   handler: async (ctx, { room }) => {
-    // TODO: need some way of ordering before take(100)
+    // XXX: need some way of ordering before take(100)
     return await ctx.db
       .query("presence")
       .withIndex("room_user", (q) => q.eq("room", room))

@@ -9,7 +9,7 @@ export default function App(): JSX.Element {
     api.presence.list,
     api.presence.heartbeat,
     api.presence.disconnect,
-    "chat-room",
+    "my-chat-room",
     name
   );
 

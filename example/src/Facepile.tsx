@@ -18,16 +18,16 @@ function getTimeAgo(timestamp: number): string {
 function Avatar({ presence, index, total }: { presence: State; index: number; total: number }) {
   return (
     <div
-      className={`facepile-avatar${presence.online ? " online" : " offline"}`}
+      className={`avatar${presence.online ? " online" : " offline"}`}
       tabIndex={0}
       style={{ "--z": total - index } as React.CSSProperties}
     >
       <span role="img" aria-label="user">
         😊
       </span>
-      <span className="facepile-tooltip">
-        <div className="facepile-tooltip-user">{presence.user}</div>
-        <div className="facepile-tooltip-status">
+      <span className="tooltip">
+        <div className="tooltip-user">{presence.user}</div>
+        <div className="tooltip-status">
           {presence.online ? "Online now" : getTimeAgo(presence.lastDisconnected)}
         </div>
       </span>
@@ -37,18 +37,18 @@ function Avatar({ presence, index, total }: { presence: State; index: number; to
 
 function Dropdown({ users }: { users: State[] }) {
   return (
-    <div className="facepile-dropdown">
-      <div className="facepile-dropdown-header">LAST VIEWED BY</div>
+    <div className="dropdown">
+      <div className="dropdown-header">LAST VIEWED BY</div>
       {users.slice(0, 10).map((presence) => (
-        <div key={presence._id} className="facepile-dropdown-row">
-          <div className="facepile-dropdown-emoji">
+        <div key={presence._id} className="dropdown-row">
+          <div className="dropdown-emoji">
             <span role="img" aria-label="user">
               😊
             </span>
           </div>
-          <div className="facepile-dropdown-info">
-            <div className="facepile-dropdown-user">{presence.user}</div>
-            <div className="facepile-dropdown-status">
+          <div className="dropdown-info">
+            <div className="dropdown-user">{presence.user}</div>
+            <div className="dropdown-status">
               {presence.online ? "Online now" : getTimeAgo(presence.lastDisconnected)}
             </div>
           </div>
@@ -66,15 +66,15 @@ export default function FacePile({ presenceState }: { presenceState: State[] }):
   const hidden = sortedPresence.slice(5);
 
   return (
-    <div className="facepile-container">
-      <div className="facepile-avatars">
+    <div className="container">
+      <div className="avatars">
         {visible.map((presence, idx) => (
           <Avatar key={presence._id} presence={presence} index={idx} total={visible.length} />
         ))}
         {hidden.length > 0 && (
-          <div className="facepile-more-container">
-            <div className="facepile-avatar facepile-more" tabIndex={0}>
-              <span className="facepile-more-count">+{hidden.length}</span>
+          <div className="more-container">
+            <div className="avatar more" tabIndex={0}>
+              <span className="more-count">+{hidden.length}</span>
             </div>
             <Dropdown users={hidden} />
           </div>

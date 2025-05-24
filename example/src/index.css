@@ -1,13 +1,6 @@
-* {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  line-height: 1.5;
-}
-
 main {
-  padding-top: 1em;
-  padding-bottom: 1em;
+  padding: 2em;
   width: min(800px, 95vw);
   margin: 0 auto;
+  text-align: center;
 }

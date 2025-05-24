@@ -70,7 +70,7 @@ export default function usePresence(
 
     // Disconnect on tab close.
     const handleBeforeUnload = () => {
-      // TODO: fetch the URL programmatically
+      // XXX: fetch the URL programmatically
       const url = "https://shocking-parrot-141.convex.site/presence/disconnect";
       navigator.sendBeacon(url, JSON.stringify({ room, user }));
     };
