@@ -26,6 +26,7 @@ export default function usePresence(
     { room: string; user: string; interval: number }
   >,
   disconnectFn: FunctionReference<"mutation", "public", { room: string; user: string }>,
+  disconnectUrl: string,
   room: string,
   user: string,
   interval: number = 10000
@@ -70,9 +71,7 @@ export default function usePresence(
 
     // Disconnect on tab close.
     const handleBeforeUnload = () => {
-      // XXX: fetch the URL programmatically
-      const url = "https://shocking-parrot-141.convex.site/presence/disconnect";
-      navigator.sendBeacon(url, JSON.stringify({ room, user }));
+      navigator.sendBeacon(disconnectUrl, JSON.stringify({ room, user }));
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
 
