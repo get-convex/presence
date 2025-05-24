@@ -7,10 +7,8 @@ import { httpActionGeneric, HttpRouter } from "convex/server";
 // TODO: don't need to heartbeat if there's been typing etc
 // TODO: support logged in an anonymous users
 // TODO: have states like "typing" etc
-// TODO: add sendBeacon on tab close
 // TODO: add auth, e.g., to disconnect
 
-// TODO: this wrapper isn't doing anything rn but probably helpful for later extensibility
 export class Presence {
   constructor(private component: UseApi<typeof api>) {}
 
