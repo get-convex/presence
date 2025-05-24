@@ -64,11 +64,18 @@ export const list = query({
     room: v.string(),
   },
   handler: async (ctx, { room }) => {
-    // XXX: need some way of ordering before take(100)
-    return await ctx.db
+    // Order by online, then lastDisconnected.
+    const fetchLimit = 104;
+    const online = await ctx.db
       .query("presence")
-      .withIndex("room_user", (q) => q.eq("room", room))
-      .take(100);
+      .withIndex("room_order", (q) => q.eq("room", room).eq("online", true))
+      .take(fetchLimit);
+    const offline = await ctx.db
+      .query("presence")
+      .withIndex("room_order", (q) => q.eq("room", room).eq("online", false))
+      .order("desc")
+      .take(fetchLimit - online.length);
+    return [...online, ...offline];
   },
 });
 

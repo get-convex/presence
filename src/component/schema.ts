@@ -7,7 +7,9 @@ export default defineSchema({
     user: v.string(),
     online: v.boolean(),
     lastDisconnected: v.number(),
-  }).index("room_user", ["room", "user"]),
+  })
+    .index("room_user", ["room", "user"])
+    .index("room_order", ["room", "online", "lastDisconnected"]),
 
   scheduledDisconnections: defineTable({
     room: v.string(),

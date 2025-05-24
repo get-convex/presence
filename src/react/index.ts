@@ -84,6 +84,7 @@ export default function usePresence(
     };
   }, [heartbeat, disconnect, room, user]);
 
+  // Move own user to the front.
   return state?.sort((a, b) => {
     if (a.user === user) return -1;
     if (b.user === user) return 1;

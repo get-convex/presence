@@ -119,6 +119,10 @@
   justify-content: center;
 }
 
+.dropdown-emoji.offline span[role="img"] {
+  opacity: 0.4;
+}
+
 .dropdown-info {
   flex: 1;
   min-width: 0;

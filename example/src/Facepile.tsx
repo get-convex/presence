@@ -40,7 +40,7 @@ function Dropdown({ users }: { users: State[] }) {
     <div className="dropdown">
       {users.slice(0, 10).map((presence) => (
         <div key={presence._id} className="dropdown-row">
-          <div className="dropdown-emoji">
+          <div className={`dropdown-emoji${!presence.online ? " offline" : ""}`}>
             <span role="img" aria-label="user">
               😊
             </span>
@@ -58,11 +58,8 @@ function Dropdown({ users }: { users: State[] }) {
 }
 
 export default function FacePile({ presenceState }: { presenceState: State[] }): JSX.Element {
-  const sortedPresence = [...presenceState].sort((a, b) =>
-    a.online === b.online ? b.lastDisconnected - a.lastDisconnected : a.online ? -1 : 1
-  );
-  const visible = sortedPresence.slice(0, 5);
-  const hidden = sortedPresence.slice(5);
+  const visible = presenceState.slice(0, 5);
+  const hidden = presenceState.slice(5);
 
   return (
     <div className="container">
