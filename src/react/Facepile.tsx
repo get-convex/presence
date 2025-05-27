@@ -1,5 +1,6 @@
+import React from "react";
+import { State } from "./index.js";
 import "./Facepile.css";
-import { State } from "../../src/react";
 
 function getTimeAgo(timestamp: number): string {
   const now = Date.now();
@@ -57,7 +58,11 @@ function Dropdown({ users }: { users: State[] }) {
   );
 }
 
-export default function FacePile({ presenceState }: { presenceState: State[] }): JSX.Element {
+export default function FacePile({
+  presenceState,
+}: {
+  presenceState: State[];
+}): React.ReactElement {
   const visible = presenceState.slice(0, 5);
   const hidden = presenceState.slice(5);
 

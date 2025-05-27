@@ -1,5 +1,5 @@
 import { useState } from "react";
-import FacePile from "./Facepile";
+import FacePile from "../../src/react/Facepile";
 import usePresence from "../../src/react";
 import { api } from "../convex/_generated/api";
 

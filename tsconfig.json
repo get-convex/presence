@@ -10,6 +10,8 @@
     "allowSyntheticDefaultImports": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
 
     "isolatedModules": true,
     "declaration": true,
