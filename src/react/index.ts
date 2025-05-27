@@ -5,6 +5,7 @@
 import { useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { FunctionReference } from "convex/server";
+import useSingleFlight from "./useSingleFlight.js";
 
 if (typeof window === "undefined") {
   throw new Error("this is frontend code, but it's running somewhere else!");
@@ -30,7 +31,7 @@ export default function usePresence(
   interval: number = 10000
 ): State[] | undefined {
   const state = useQuery(listFn, { room });
-  const heartbeat = useMutation(heartbeatFn);
+  const heartbeat = useSingleFlight(useMutation(heartbeatFn));
   const disconnect = useMutation(disconnectFn);
 
   useEffect(() => {
