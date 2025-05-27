@@ -62,20 +62,25 @@ export const heartbeat = mutation({
 export const list = query({
   args: {
     room: v.string(),
+    limit: v.optional(v.number()),
   },
-  handler: async (ctx, { room }) => {
+  handler: async (ctx, { room, limit = 104 }) => {
     // Order by online, then lastDisconnected.
-    const fetchLimit = 104;
     const online = await ctx.db
       .query("presence")
       .withIndex("room_order", (q) => q.eq("room", room).eq("online", true))
-      .take(fetchLimit);
+      .take(limit);
     const offline = await ctx.db
       .query("presence")
       .withIndex("room_order", (q) => q.eq("room", room).eq("online", false))
       .order("desc")
-      .take(fetchLimit - online.length);
-    return [...online, ...offline];
+      .take(limit - online.length);
+    const results = [...online, ...offline];
+    return results.map(({ user, online, lastDisconnected }) => ({
+      user,
+      online,
+      lastDisconnected,
+    }));
   },
 });
 

@@ -41,7 +41,12 @@ export type Mounts = {
       { interval?: number; room: string; user: string },
       any
     >;
-    list: FunctionReference<"query", "public", { room: string }, any>;
+    list: FunctionReference<
+      "query",
+      "public",
+      { limit?: number; room: string },
+      any
+    >;
   };
 };
 // For now fullApiWithMounts is only fullApi which provides

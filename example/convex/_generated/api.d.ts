@@ -55,7 +55,12 @@ export declare const components: {
         { interval?: number; room: string; user: string },
         any
       >;
-      list: FunctionReference<"query", "internal", { room: string }, any>;
+      list: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; room: string },
+        any
+      >;
     };
   };
 };

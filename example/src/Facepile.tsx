@@ -39,7 +39,7 @@ function Dropdown({ users }: { users: State[] }) {
   return (
     <div className="dropdown">
       {users.slice(0, 10).map((presence) => (
-        <div key={presence._id} className="dropdown-row">
+        <div key={presence.user} className="dropdown-row">
           <div className={`dropdown-emoji${!presence.online ? " offline" : ""}`}>
             <span role="img" aria-label="user">
               😊
@@ -65,7 +65,7 @@ export default function FacePile({ presenceState }: { presenceState: State[] }):
     <div className="container">
       <div className="avatars">
         {visible.map((presence, idx) => (
-          <Avatar key={presence._id} presence={presence} index={idx} total={visible.length} />
+          <Avatar key={presence.user} presence={presence} index={idx} total={visible.length} />
         ))}
         {hidden.length > 0 && (
           <div className="more-container">

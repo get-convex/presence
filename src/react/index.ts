@@ -11,9 +11,7 @@ if (typeof window === "undefined") {
 }
 
 export interface State {
-  _id: string;
   user: string;
-  room: string;
   online: boolean;
   lastDisconnected: number;
 }
