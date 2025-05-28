@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
-import { Presence } from "../../src/client";
 import { components } from "./_generated/api";
 import { v } from "convex/values";
+import { Presence } from "../../src/client";
 
 export const presence = new Presence(components.presence);
 

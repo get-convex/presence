@@ -1,5 +1,5 @@
-import { presence } from "./presence";
 import { httpRouter } from "convex/server";
+import { presence } from "./presence";
 
 const http = httpRouter();
 presence.registerRoutes(http);
