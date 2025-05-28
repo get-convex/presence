@@ -1,6 +1,6 @@
 import React from "react";
-import { State } from "./index.js";
-import "./Facepile.css";
+import { State } from "../react/index.js";
+import "./index.css";
 
 // React component that displays a facepile of users based on their presence
 // state. This renders a list of avatars for the first 5 users plus a drop-down

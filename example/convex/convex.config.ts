@@ -1,5 +1,5 @@
 import { defineApp } from "convex/server";
-import presence from "../../src/component/convex.config";
+import presence from "@convex-dev/presence/convex.config";
 
 const app = defineApp();
 app.use(presence);

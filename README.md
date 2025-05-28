@@ -44,7 +44,7 @@ export default app;
 import { mutation, query } from "./_generated/server";
 import { components } from "./_generated/api";
 import { v } from "convex/values";
-import { Presence } from "@convex-dev/presence/client";
+import { Presence } from "@convex-dev/presence";
 
 export const presence = new Presence(components.presence);
 
@@ -77,8 +77,8 @@ A `Presence` React component can be instantiated from your client code like this
 ```tsx
 import { useState } from "react";
 import { api } from "../convex/_generated/api";
-import FacePile from "@convex-dev/presence/react/Facepile";
 import usePresence from "@convex-dev/presence/react";
+import FacePile from "@convex-dev/presence/facepile";
 
 export default function App(): React.ReactElement {
   const [name] = useState(() => "User " + Math.floor(Math.random() * 10000));

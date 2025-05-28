@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "../convex/_generated/api";
-import FacePile from "../../src/react/Facepile";
-import usePresence from "../../src/react";
+import usePresence from "@convex-dev/presence/react";
+import FacePile from "@convex-dev/presence/facepile";
 
 export default function App(): React.ReactElement {
   const [name] = useState(() => "User " + Math.floor(Math.random() * 10000));
