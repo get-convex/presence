@@ -1,5 +1,7 @@
-// Wrapper around Presence component for us in Convex server functions.
-// TODO main docs here
+// Wrapper around Presence component for use in Convex server functions.
+//
+// See ../react/index.ts for the usePresence hook that maintains presence in a
+// client-side React component.
 
 import { api } from "../component/_generated/api.js";
 import { RunMutationCtx, RunQueryCtx, UseApi } from "./utils.js";
@@ -20,12 +22,13 @@ export class Presence {
     return ctx.runMutation(this.component.public.disconnect, { room, user });
   }
 
+  // The sendBeacon API that's used to gracefully disconnect users can only talk
+  // http not websockets so we need a separate handler just for this.
   registerRoutes(http: HttpRouter) {
     http.route({
       path: "/presence/disconnect",
       method: "POST",
       handler: httpActionGeneric(async (ctx, request) => {
-        console.log("http disconnect");
         const { room, user } = await request.json();
         await this.disconnect(ctx, room, user);
         return new Response(null, { status: 200 });

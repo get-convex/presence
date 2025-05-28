@@ -1,11 +1,15 @@
-// Presence component.
+// Convex presence component implementation.
 //
-// See ../client/index.ts for the public API.
+// See ../react/index.ts for the usePresence hook that maintains presence in a
+// client-side React component.
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server.js";
 import { api } from "./_generated/api.js";
 
+// Keepalive hearbeat mutation. The interval is the time between heartbeats. The
+// user will be disconnected if no heartbeat is received for 2.5x the interval
+// or if a graceful disconnect message is received.
 export const heartbeat = mutation({
   args: {
     room: v.string(),
@@ -59,6 +63,7 @@ export const heartbeat = mutation({
   },
 });
 
+// List presence state for all users in the room, up to the limit of users.
 export const list = query({
   args: {
     room: v.string(),
@@ -84,6 +89,7 @@ export const list = query({
   },
 });
 
+// Gracefully disconnect a user.
 export const disconnect = mutation({
   args: {
     room: v.string(),

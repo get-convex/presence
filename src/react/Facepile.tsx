@@ -2,6 +2,37 @@ import React from "react";
 import { State } from "./index.js";
 import "./Facepile.css";
 
+// React component that displays a facepile of users based on their presence
+// state. This renders a list of avatars for the first 5 users plus a drop-down
+// for the rest. You can just drop this into your application but you likely
+// want to create your own version with your own custom styling.
+export default function FacePile({
+  presenceState,
+}: {
+  presenceState: State[];
+}): React.ReactElement {
+  const visible = presenceState.slice(0, 5);
+  const hidden = presenceState.slice(5);
+
+  return (
+    <div className="container">
+      <div className="avatars">
+        {visible.map((presence, idx) => (
+          <Avatar key={presence.user} presence={presence} index={idx} total={visible.length} />
+        ))}
+        {hidden.length > 0 && (
+          <div className="more-container">
+            <div className="avatar more" tabIndex={0}>
+              +{hidden.length}
+            </div>
+            <Dropdown users={hidden} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function getTimeAgo(timestamp: number): string {
   const now = Date.now();
   const diff = Math.floor((now - timestamp) / 1000);
@@ -54,33 +85,6 @@ function Dropdown({ users }: { users: State[] }) {
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-export default function FacePile({
-  presenceState,
-}: {
-  presenceState: State[];
-}): React.ReactElement {
-  const visible = presenceState.slice(0, 5);
-  const hidden = presenceState.slice(5);
-
-  return (
-    <div className="container">
-      <div className="avatars">
-        {visible.map((presence, idx) => (
-          <Avatar key={presence.user} presence={presence} index={idx} total={visible.length} />
-        ))}
-        {hidden.length > 0 && (
-          <div className="more-container">
-            <div className="avatar more" tabIndex={0}>
-              +{hidden.length}
-            </div>
-            <Dropdown users={hidden} />
-          </div>
-        )}
-      </div>
     </div>
   );
 }

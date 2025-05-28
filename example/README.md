@@ -1,4 +1,14 @@
-# Example app
+# Presence example app
 
-Components need an app that uses them in order to run codegen. An example app is also useful
-for testing and documentation.
+This is a really basic example of incorporating presence into a Vite React app.
+The boilerplate in `/convex` is required to reexport the presence functionality
+and disconnect handler. The main app is in `/src/App.tsx` which just
+instantiates the Facepile react component from within the Presence Convex
+component.
+
+## Running the example
+
+```bash
+npm install
+npm run dev
+```

@@ -3,7 +3,7 @@ import FacePile from "../../src/react/Facepile";
 import usePresence from "../../src/react";
 import { api } from "../convex/_generated/api";
 
-export default function App(): JSX.Element {
+export default function App(): React.ReactElement {
   const [name] = useState(() => "User " + Math.floor(Math.random() * 10000));
 
   const httpActionHost = import.meta.env.VITE_CONVEX_URL.replace(".convex.cloud", ".convex.site");
