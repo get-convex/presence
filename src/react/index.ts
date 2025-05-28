@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvex } from "convex/react";
 import { FunctionReference } from "convex/server";
 import useSingleFlight from "./useSingleFlight.js";
 
@@ -57,26 +57,24 @@ export interface State {
 // state for users in rooms. You may also want to fork this to store metadata or
 // add auth state etc.
 //
-// It's easy to accidentally implement presence inefficiently, by rerunning the
-// list query every time a user sends a heartbeat message. Of course this would
-// be even more inefficient without Convex because you'd need to poll for the
-// latest state. This hook is designed to be efficient and only sends a message
-// to the client over a websocket whenever a user joins or leaves the room.
+// It's easy to accidentally implement presence inefficiently by rerunning the
+// list query every time a user sends a heartbeat message. This hook is designed
+// to be efficient and only sends a message to the client over a websocket
+// whenever a user joins or leaves the room.
 //
-// Use of this hook requires instantiating the Convex presence component and
-// passing in a reference to it plus the URL for the Convex backend. The backend
-// URL is used to gracefully disconnect a user via sendBeacon when the tab is
-// closed.
-//
-// See ../../example for an example of how to incorporate this hook into your
-// application.
+// Use of this hook requires passing in a reference to the Convex presence
+// component defined in your Convex app. See ../../example/src/App.tsx for an
+// example of how to incorporate this hook into your application.
 export default function usePresence(
   presence: PresenceAPI,
-  convexUrl: string,
   room: string, // room to join
   user: string, // unique id for the current user
-  interval: number = 10000 // interval between heartbeats
+  interval: number = 10000, // interval between heartbeats
+  convexUrl?: string // optional override for backend url
 ): State[] | undefined {
+  const convex = useConvex();
+  const baseUrl = convexUrl ?? convex.url;
+
   const state = useQuery(presence.list, { room });
   const heartbeat = useSingleFlight(useMutation(presence.heartbeat));
   const disconnect = useMutation(presence.disconnect);
@@ -117,13 +115,13 @@ export default function usePresence(
 
     // Disconnect on tab close.
     const handleBeforeUnload = () => {
-      const url = `${convexUrl}/api/mutation`;
+      const mutationUrl = `${baseUrl}/api/mutation`;
       const json = JSON.stringify({
         path: "presence:disconnect",
         args: { room: room, user: user },
       });
       const blob = new Blob([json], { type: "application/json" });
-      navigator.sendBeacon(url, blob);
+      navigator.sendBeacon(mutationUrl, blob);
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
 
@@ -134,7 +132,7 @@ export default function usePresence(
       window.removeEventListener("beforeunload", handleBeforeUnload);
       void disconnect({ room, user });
     };
-  }, [heartbeat, disconnect, room, user]);
+  }, [heartbeat, disconnect, room, user, baseUrl]);
 
   // Move own user to the front.
   return state?.sort((a, b) => {
