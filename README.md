@@ -27,7 +27,9 @@ npm install @convex-dev/presence
 
 First, add the component to your Convex app:
 
-```typescript:convex/convex.config.ts
+`convex/convex.config.ts`
+
+```ts
 import { defineApp } from "convex/server";
 import presence from "@convex-dev/presence/convex.config";
 
@@ -36,7 +38,9 @@ app.use(presence);
 export default app;
 ```
 
-```typescript:convex/presence.ts
+`convex/presence.ts`
+
+```ts
 import { mutation, query } from "./_generated/server";
 import { components } from "./_generated/api";
 import { v } from "convex/values";
@@ -66,7 +70,9 @@ export const disconnect = mutation({
 });
 ```
 
-```typescript:convex/http.ts
+`convex/http.ts`
+
+```ts
 import { httpRouter } from "convex/server";
 import { presence } from "./presence";
 
@@ -75,9 +81,11 @@ presence.registerRoutes(http);
 export default http;
 ```
 
-A `Presence` React component can be instantiates from your client code as:
+A `Presence` React component can be instantiated from your client code like this:
 
-```typescript:src/App.tsx
+`src/App.tsx`
+
+```tsx
 import { useState } from "react";
 import { api } from "../convex/_generated/api";
 import FacePile from "@convex-dev/presence/react/Facepile";
