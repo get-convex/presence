@@ -9,6 +9,41 @@ if (typeof window === "undefined") {
   throw new Error("this is frontend code, but it's running somewhere else!");
 }
 
+// Interface in your Convex app /convex directory that implements these
+// functions by calling into the presence component, e.g., like this:
+//
+// export const presence = new Presence(components.presence);
+//
+// export const heartbeat = mutation({
+//   args: { room: v.string(), user: v.string(), interval: v.number() },
+//   handler: async (ctx, { room, user, interval }) => {
+//     return await presence.heartbeat(ctx, room, user, interval);
+//   },
+// });
+//
+// export const list = query({
+//   args: { room: v.string() },
+//   handler: async (ctx, { room }) => {
+//     return await presence.list(ctx, room);
+//   },
+// });
+//
+// export const disconnect = mutation({
+//   args: { room: v.string(), user: v.string() },
+//   handler: async (ctx, { room, user }) => {
+//     return await presence.disconnect(ctx, room, user);
+//   },
+// });
+export interface PresenceAPI {
+  list: FunctionReference<"query", "public", { room: string }, State[]>;
+  heartbeat: FunctionReference<
+    "mutation",
+    "public",
+    { room: string; user: string; interval: number }
+  >;
+  disconnect: FunctionReference<"mutation", "public", { room: string; user: string }>;
+}
+
 // Presence state for a user within the given room.
 export interface State {
   user: string;
@@ -36,21 +71,15 @@ export interface State {
 // See ../../example for an example of how to incorporate this hook into your
 // application.
 export default function usePresence(
-  listFn: FunctionReference<"query", "public", { room: string }, State[]>,
-  heartbeatFn: FunctionReference<
-    "mutation",
-    "public",
-    { room: string; user: string; interval: number }
-  >,
-  disconnectFn: FunctionReference<"mutation", "public", { room: string; user: string }>,
+  presence: PresenceAPI,
   disconnectUrl: string,
   room: string, // room to join
   user: string, // unique id for the current user
   interval: number = 10000 // interval between heartbeats
 ): State[] | undefined {
-  const state = useQuery(listFn, { room });
-  const heartbeat = useSingleFlight(useMutation(heartbeatFn));
-  const disconnect = useMutation(disconnectFn);
+  const state = useQuery(presence.list, { room });
+  const heartbeat = useSingleFlight(useMutation(presence.heartbeat));
+  const disconnect = useMutation(presence.disconnect);
 
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;

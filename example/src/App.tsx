@@ -9,14 +9,7 @@ export default function App(): React.ReactElement {
   const httpActionHost = import.meta.env.VITE_CONVEX_URL.replace(".convex.cloud", ".convex.site");
   const disconnectUrl = `${httpActionHost}/presence/disconnect`;
 
-  const presenceState = usePresence(
-    api.presence.list,
-    api.presence.heartbeat,
-    api.presence.disconnect,
-    disconnectUrl,
-    "my-chat-room",
-    name
-  );
+  const presenceState = usePresence(api.presence, disconnectUrl, "my-chat-room", name);
 
   return (
     <main>
