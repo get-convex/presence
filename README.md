@@ -70,17 +70,6 @@ export const disconnect = mutation({
 });
 ```
 
-`convex/http.ts`
-
-```ts
-import { httpRouter } from "convex/server";
-import { presence } from "./presence";
-
-const http = httpRouter();
-presence.registerRoutes(http);
-export default http;
-```
-
 A `Presence` React component can be instantiated from your client code like this:
 
 `src/App.tsx`
@@ -93,11 +82,8 @@ import usePresence from "@convex-dev/presence/react";
 
 export default function App(): React.ReactElement {
   const [name] = useState(() => "User " + Math.floor(Math.random() * 10000));
-
-  const httpActionHost = import.meta.env.VITE_CONVEX_URL.replace(".convex.cloud", ".convex.site");
-  const disconnectUrl = `${httpActionHost}/presence/disconnect`;
-
-  const presenceState = usePresence(api.presence, disconnectUrl, "my-chat-room", name);
+  const convexUrl = import.meta.env.VITE_CONVEX_URL;
+  const presenceState = usePresence(api.presence, convexUrl, "my-chat-room", name);
 
   return (
     <main>

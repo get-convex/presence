@@ -5,11 +5,8 @@ import usePresence from "../../src/react";
 
 export default function App(): React.ReactElement {
   const [name] = useState(() => "User " + Math.floor(Math.random() * 10000));
-
-  const httpActionHost = import.meta.env.VITE_CONVEX_URL.replace(".convex.cloud", ".convex.site");
-  const disconnectUrl = `${httpActionHost}/presence/disconnect`;
-
-  const presenceState = usePresence(api.presence, disconnectUrl, "my-chat-room", name);
+  const convexUrl = import.meta.env.VITE_CONVEX_URL;
+  const presenceState = usePresence(api.presence, convexUrl, "my-chat-room", name);
 
   return (
     <main>

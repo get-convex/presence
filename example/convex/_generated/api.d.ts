@@ -8,7 +8,6 @@
  * @module
  */
 
-import type * as http from "../http.js";
 import type * as presence from "../presence.js";
 
 import type {
@@ -26,7 +25,6 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
-  http: typeof http;
   presence: typeof presence;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

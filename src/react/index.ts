@@ -58,21 +58,21 @@ export interface State {
 // add auth state etc.
 //
 // It's easy to accidentally implement presence inefficiently, by rerunning the
-// list query every time a user sends a heartbeat message. Of course this can be
-// even more inefficient without Convex because you need to poll for the latest
-// state. This hook is designed to be efficient and only sends a message to the
-// client over a websocket whenever a user joins or leaves the room.
+// list query every time a user sends a heartbeat message. Of course this would
+// be even more inefficient without Convex because you'd need to poll for the
+// latest state. This hook is designed to be efficient and only sends a message
+// to the client over a websocket whenever a user joins or leaves the room.
 //
 // Use of this hook requires instantiating the Convex presence component and
-// then passing in the list, heartbeat and disconnect functions, plus the URL
-// for a disconnect http action that will gracefully disconnect a user when the
-// tab is closed.
+// passing in a reference to it plus the URL for the Convex backend. The backend
+// URL is used to gracefully disconnect a user via sendBeacon when the tab is
+// closed.
 //
 // See ../../example for an example of how to incorporate this hook into your
 // application.
 export default function usePresence(
   presence: PresenceAPI,
-  disconnectUrl: string,
+  convexUrl: string,
   room: string, // room to join
   user: string, // unique id for the current user
   interval: number = 10000 // interval between heartbeats
@@ -117,7 +117,13 @@ export default function usePresence(
 
     // Disconnect on tab close.
     const handleBeforeUnload = () => {
-      navigator.sendBeacon(disconnectUrl, JSON.stringify({ room, user }));
+      const url = `${convexUrl}/api/mutation`;
+      const json = JSON.stringify({
+        path: "presence:disconnect",
+        args: { room: room, user: user },
+      });
+      const blob = new Blob([json], { type: "application/json" });
+      navigator.sendBeacon(url, blob);
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
 

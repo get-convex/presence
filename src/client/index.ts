@@ -5,7 +5,6 @@
 
 import { api } from "../component/_generated/api.js";
 import { RunMutationCtx, RunQueryCtx, UseApi } from "./utils.js";
-import { httpActionGeneric, HttpRouter } from "convex/server";
 
 export class Presence {
   constructor(private component: UseApi<typeof api>) {}
@@ -20,19 +19,5 @@ export class Presence {
 
   async disconnect(ctx: RunMutationCtx, room: string, user: string) {
     return ctx.runMutation(this.component.public.disconnect, { room, user });
-  }
-
-  // The sendBeacon API that's used to gracefully disconnect users can only talk
-  // http not websockets so we need a separate handler just for this.
-  registerRoutes(http: HttpRouter) {
-    http.route({
-      path: "/presence/disconnect",
-      method: "POST",
-      handler: httpActionGeneric(async (ctx, request) => {
-        const { room, user } = await request.json();
-        await this.disconnect(ctx, room, user);
-        return new Response(null, { status: 200 });
-      }),
-    });
   }
 }
