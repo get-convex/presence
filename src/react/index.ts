@@ -52,30 +52,40 @@ export interface State {
 
 // React hook for maintaining presence state.
 //
-// This is a simple hook you can use in your application to maintain presence
-// state for users in rooms. You may also want to fork this to store metadata or
-// add auth state etc.
-//
-// It's easy to accidentally implement presence inefficiently by rerunning the
-// list query every time a user sends a heartbeat message. This hook is designed
-// to be efficient and only sends a message to the client over a websocket
-// whenever a user joins or leaves the room.
+// This hook is designed to be efficient and only sends a message to users
+// whenever a member joins or leaves the room.
 //
 // Use of this hook requires passing in a reference to the Convex presence
 // component defined in your Convex app. See ../../example/src/App.tsx for an
 // example of how to incorporate this hook into your application.
 export default function usePresence(
   presence: PresenceAPI,
-  room: string, // room to join
-  user: string, // unique id for the current user
-  interval: number = 10000, // interval between heartbeats
-  convexUrl?: string // optional override for backend url
+  room: string,
+  user: string,
+  interval: number = 10000,
+  convexUrl?: string
 ): State[] | undefined {
   const convex = useConvex();
   const baseUrl = convexUrl ?? convex.url;
 
-  // Whenever we load the hook we need to register with the backend to get a
-  // token to use to maintain presence state.
+  const [token, setToken] = useToken(presence, room, user);
+  useHeartbeat(presence, token, setToken, room, user, interval, baseUrl);
+
+  const state = useQuery(presence.list, { token: token ?? "" });
+  // Move own user to the front.
+  return state?.sort((a, b) => {
+    if (a.user === user) return -1;
+    if (b.user === user) return 1;
+    return 0;
+  });
+}
+
+// Hook to register a user within a room and get a token.
+function useToken(
+  presence: PresenceAPI,
+  room: string,
+  user: string
+): [string | null, (token: string) => void] {
   const register = useMutation(presence.register);
   const [token, setToken] = useState<string | null>(null);
   const hasRegistered = useRef(false);
@@ -84,41 +94,48 @@ export default function usePresence(
     const registerUser = async () => {
       if (hasRegistered.current) return;
       hasRegistered.current = true;
-      console.log("mount registering user", room, user);
+      // XXX do we need single flighting?
       const newToken = await register({ room, user });
-      console.log("registered user", room, user, newToken);
       setToken(newToken);
     };
     void registerUser();
   }, [register, room, user]);
 
-  const state = useQuery(presence.list, { token: token ?? "" });
+  return [token, setToken];
+}
+
+// Hook for managing heartbeats and cleanup.
+function useHeartbeat(
+  presence: PresenceAPI,
+  token: string | null,
+  setToken: (token: string) => void,
+  room: string,
+  user: string,
+  interval: number,
+  baseUrl: string
+) {
   const heartbeat = useSingleFlight(useMutation(presence.heartbeat));
   const disconnect = useMutation(presence.disconnect);
+  const register = useMutation(presence.register);
 
   useEffect(() => {
     if (!token) return;
-    console.log("using token", token);
 
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
-    // Continually schedule heartbeats.
     const startHeartbeat = () => {
       if (!token) return;
-
       const sendHeartbeat = async () => {
         try {
           await heartbeat({ token, interval });
         } catch (e) {
-          // XXX check if this is the right error
           if (e instanceof Error && e.message.includes("Invalid token")) {
-            // Token expired, re-register
+            // XXX check if this is the right error
             // XXX do we need single flighting?
             console.log("token expired, re-registering user", room, user);
             const newToken = await register({ room, user });
             setToken(newToken);
           } else {
-            // Re-throw other errors
             throw e;
           }
         }
@@ -140,10 +157,10 @@ export default function usePresence(
       }
     };
 
-    // Start/stop heartbeats based on visibility.
     if (!document.hidden) {
       startHeartbeat();
     }
+
     const handleVisibilityChange = () => {
       if (document.hidden) {
         stopHeartbeat();
@@ -153,7 +170,6 @@ export default function usePresence(
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Disconnect on tab close.
     const handleBeforeUnload = () => {
       if (!token) return;
       const mutationUrl = `${baseUrl}/api/mutation`;
@@ -166,22 +182,13 @@ export default function usePresence(
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
 
-    // Cleanup on unmount.
     return () => {
       stopHeartbeat();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("beforeunload", handleBeforeUnload);
       if (token) {
-        // XXX should we deregister too?
         void disconnect({ token });
       }
     };
-  }, [heartbeat, disconnect, token, baseUrl, interval]);
-
-  // Move own user to the front.
-  return state?.sort((a, b) => {
-    if (a.user === user) return -1;
-    if (b.user === user) return 1;
-    return 0;
-  });
+  }, [heartbeat, disconnect, token, baseUrl, interval, register, room, user, setToken]);
 }
