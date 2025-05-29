@@ -98,10 +98,10 @@ export const heartbeat = mutation({
     user: v.string(),
     interval: v.optional(v.number()),
   },
-  returns: {
+  returns: v.object({
     roomToken: v.string(),
     presenceToken: v.string(),
-  },
+  }),
   handler: async (ctx, { room, user, interval = 10000 }) => {
     const state = await ctx.db
       .query("presence")
@@ -125,15 +125,16 @@ export const heartbeat = mutation({
         .query("scheduledDisconnections")
         .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
         .unique();
-      if (!scheduledDisconnect) {
-        throw new Error("state online with no scheduled disconnect");
+      if (scheduledDisconnect) {
+        await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
+        await ctx.db.delete(scheduledDisconnect._id);
+      } else {
+        console.error(`Expected scheduled disconnect for online user ${user} in room ${room}`);
       }
-      await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
-      await ctx.db.delete(scheduledDisconnect._id);
     }
 
     // Generate tokens to list and disconnect.
-    let roomToken = null;
+    let roomToken: string;
     const roomTokenRecord = await ctx.db
       .query("roomTokens")
       .withIndex("room", (q) => q.eq("room", room))
@@ -144,7 +145,7 @@ export const heartbeat = mutation({
       roomToken = crypto.randomUUID();
       await ctx.db.insert("roomTokens", { room, token: roomToken });
     }
-    let presenceToken = null;
+    let presenceToken: string;
     const presenceTokenRecord = await ctx.db
       .query("presenceTokens")
       .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
@@ -178,6 +179,13 @@ export const list = query({
     roomToken: v.string(),
     limit: v.optional(v.number()),
   },
+  returns: v.array(
+    v.object({
+      user: v.string(),
+      online: v.boolean(),
+      lastDisconnected: v.number(),
+    })
+  ),
   handler: async (ctx, { roomToken, limit = 104 }) => {
     if (!roomToken) {
       return [];
@@ -215,6 +223,7 @@ export const disconnect = mutation({
   args: {
     presenceToken: v.string(),
   },
+  returns: v.null(),
   handler: async (ctx, { presenceToken }) => {
     const presenceTokenRecord = await ctx.db
       .query("presenceTokens")
@@ -242,10 +251,11 @@ export const disconnect = mutation({
       .query("scheduledDisconnections")
       .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
       .unique();
-    if (!scheduledDisconnect) {
-      throw new Error("state online with no scheduled disconnect");
+    if (scheduledDisconnect) {
+      await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
+      await ctx.db.delete(scheduledDisconnect._id);
+    } else {
+      console.error(`Expected scheduled disconnect for online user ${user} in room ${room}`);
     }
-    await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
-    await ctx.db.delete(scheduledDisconnect._id);
   },
 });

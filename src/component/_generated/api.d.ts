@@ -33,7 +33,7 @@ export type Mounts = {
       "mutation",
       "public",
       { presenceToken: string },
-      any
+      null
     >;
     heartbeat: FunctionReference<
       "mutation",
@@ -45,7 +45,7 @@ export type Mounts = {
       "query",
       "public",
       { limit?: number; roomToken: string },
-      any
+      Array<{ lastDisconnected: number; online: boolean; user: string }>
     >;
   };
 };

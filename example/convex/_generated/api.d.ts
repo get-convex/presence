@@ -45,7 +45,7 @@ export declare const components: {
         "mutation",
         "internal",
         { presenceToken: string },
-        any
+        null
       >;
       heartbeat: FunctionReference<
         "mutation",
@@ -57,7 +57,7 @@ export declare const components: {
         "query",
         "internal",
         { limit?: number; roomToken: string },
-        any
+        Array<{ lastDisconnected: number; online: boolean; user: string }>
       >;
     };
   };
