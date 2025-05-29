@@ -180,7 +180,6 @@ export const list = query({
   },
   handler: async (ctx, { roomToken, limit = 104 }) => {
     if (!roomToken) {
-      console.log("missing token");
       return [];
     }
     const roomTokenRecord = await ctx.db
@@ -188,7 +187,6 @@ export const list = query({
       .withIndex("token", (q) => q.eq("token", roomToken))
       .unique();
     if (!roomTokenRecord) {
-      console.log("invalid room token", roomToken);
       return [];
     }
     const { room } = roomTokenRecord;

@@ -91,7 +91,6 @@ export default function usePresence(
       const result = await heartbeat({ room, user, interval });
       setRoomToken(result.roomToken);
       setPresenceToken(result.presenceToken);
-      console.log("setting presence token", result.presenceToken);
     };
     const intervalId = setInterval(sendHeartbeat, interval);
     void sendHeartbeat();
@@ -118,13 +117,11 @@ export default function usePresence(
     // Handle visibility changes.
     const handleVisibility = async () => {
       if (document.hidden) {
-        console.log("document hidden, presence token", presenceTokenRef.current);
         clearInterval(intervalId);
         if (presenceTokenRef.current) {
           await disconnect({ presenceToken: presenceTokenRef.current });
         }
       } else {
-        console.log("document visible, sending heartbeat");
         void sendHeartbeat();
         setInterval(sendHeartbeat, interval);
       }
