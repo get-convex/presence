@@ -7,140 +7,102 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server.js";
 import { api } from "./_generated/api.js";
 
-// XXX deregister other tokens
-// Register the user in the room and get a token. An optional expiresAfterMs
-// delay will auto-expire the token and require the user to re-register. This
-// typically shouldn't be exposed to end users and should be wrapped in some
-// code that performs auth checks before allowing the user into the room.
-export const register = mutation({
-  args: {
-    room: v.string(),
-    user: v.string(),
-    expiresAfterMs: v.optional(v.number()),
-  },
-  handler: async (ctx, { room, user, expiresAfterMs }) => {
-    const token = crypto.randomUUID();
-    await ctx.db.insert("tokens", { token, room, user });
-    if (expiresAfterMs) {
-      await ctx.scheduler.runAfter(expiresAfterMs, api.public.deregister, { token });
-    }
-    return token;
-  },
-});
+// TODO: reinstate all the user management functions
+// TODO: rotate the room tokens
+// TODO: make sure this works with user metadata
 
-// Remove the ability to use the token to identify the user in the room.
-export const deregister = mutation({
-  args: {
-    token: v.string(),
-  },
-  handler: async (ctx, { token }) => {
-    const tokenRecord = await ctx.db
-      .query("tokens")
-      .withIndex("token", (q) => q.eq("token", token))
-      .unique();
-    if (!tokenRecord) {
-      throw new Error("Invalid token");
-    }
-    await ctx.db.delete(tokenRecord._id);
-  },
-});
+// // Remove the user from the room.
+// // This typically shouldn't be exposed to end users
+// export const remove = mutation({
+//   args: {
+//     room: v.string(),
+//     user: v.string(),
+//   },
+//   handler: async (ctx, { room, user }) => {
+//     const state = await ctx.db
+//       .query("presence")
+//       .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
+//       .unique();
+//     if (!state) {
+//       throw new ConvexError("User not in room");
+//     }
+//     await ctx.db.delete(state._id);
+//     const scheduledDisconnect = await ctx.db
+//       .query("scheduledDisconnections")
+//       .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
+//       .unique();
+//     if (scheduledDisconnect) {
+//       await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
+//       await ctx.db.delete(scheduledDisconnect._id);
+//     }
+//   },
+// });
 
-// Remove the user from the room.
-// This typically shouldn't be exposed to end users
-export const remove = mutation({
-  args: {
-    room: v.string(),
-    user: v.string(),
-  },
-  handler: async (ctx, { room, user }) => {
-    const state = await ctx.db
-      .query("presence")
-      .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
-      .unique();
-    if (!state) {
-      throw new Error("User not in room");
-    }
-    await ctx.db.delete(state._id);
-    const scheduledDisconnect = await ctx.db
-      .query("scheduledDisconnections")
-      .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
-      .unique();
-    if (scheduledDisconnect) {
-      await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
-      await ctx.db.delete(scheduledDisconnect._id);
-    }
-  },
-});
+// // Remove user from all rooms.
+// // TODO invalidate tokens
+// export const removeUser = mutation({
+//   args: {
+//     user: v.string(),
+//   },
+//   handler: async (ctx, { user }) => {
+//     const states = await ctx.db
+//       .query("presence")
+//       .withIndex("user", (q) => q.eq("user", user))
+//       .collect();
+//     for (const state of states) {
+//       await ctx.db.delete(state._id);
+//     }
+//     const scheduledDisconnects = await ctx.db
+//       .query("scheduledDisconnections")
+//       .withIndex("user", (q) => q.eq("user", user))
+//       .collect();
+//     for (const scheduledDisconnect of scheduledDisconnects) {
+//       await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
+//       await ctx.db.delete(scheduledDisconnect._id);
+//     }
+//   },
+// });
 
-// Remove user from all rooms.
-// XXX invalidate tokens
-export const removeUser = mutation({
-  args: {
-    user: v.string(),
-  },
-  handler: async (ctx, { user }) => {
-    const states = await ctx.db
-      .query("presence")
-      .withIndex("user", (q) => q.eq("user", user))
-      .collect();
-    for (const state of states) {
-      await ctx.db.delete(state._id);
-    }
-    const scheduledDisconnects = await ctx.db
-      .query("scheduledDisconnections")
-      .withIndex("user", (q) => q.eq("user", user))
-      .collect();
-    for (const scheduledDisconnect of scheduledDisconnects) {
-      await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
-      await ctx.db.delete(scheduledDisconnect._id);
-    }
-  },
-});
+// // Remove room.
+// // TODO invalidate tokens
+// export const removeRoom = mutation({
+//   args: {
+//     room: v.string(),
+//   },
+//   handler: async (ctx, { room }) => {
+//     // TODO paginate
+//     const states = await ctx.db
+//       .query("presence")
+//       .withIndex("room_user", (q) => q.eq("room", room))
+//       .collect();
+//     for (const state of states) {
+//       await ctx.db.delete(state._id);
+//     }
+//     const scheduledDisconnects = await ctx.db
+//       .query("scheduledDisconnections")
+//       .withIndex("room_user", (q) => q.eq("room", room))
+//       .collect();
+//     for (const scheduledDisconnect of scheduledDisconnects) {
+//       await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
+//       await ctx.db.delete(scheduledDisconnect._id);
+//     }
+//   },
+// });
 
-// Remove room.
-// XXX invalidate tokens
-export const removeRoom = mutation({
-  args: {
-    room: v.string(),
-  },
-  handler: async (ctx, { room }) => {
-    // XXX paginate
-    const states = await ctx.db
-      .query("presence")
-      .withIndex("room_user", (q) => q.eq("room", room))
-      .collect();
-    for (const state of states) {
-      await ctx.db.delete(state._id);
-    }
-    const scheduledDisconnects = await ctx.db
-      .query("scheduledDisconnections")
-      .withIndex("room_user", (q) => q.eq("room", room))
-      .collect();
-    for (const scheduledDisconnect of scheduledDisconnects) {
-      await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
-      await ctx.db.delete(scheduledDisconnect._id);
-    }
-  },
-});
-
-// Keepalive hearbeat mutation. The interval is the time between heartbeats. The
-// user will be disconnected if no heartbeat is received for 2.5x the interval
-// or if a graceful disconnect message is received.
+// Keepalive heartbeat mutation. Interval is the time between heartbeats. User
+// will be disconnected if no heartbeat is received for 2.5x the interval or if
+// a graceful disconnect message is received.
 export const heartbeat = mutation({
   args: {
-    token: v.string(),
+    room: v.string(),
+    user: v.string(),
     interval: v.optional(v.number()),
   },
-  handler: async (ctx, { token, interval = 10000 }) => {
-    const tokenRecord = await ctx.db
-      .query("tokens")
-      .withIndex("token", (q) => q.eq("token", token))
-      .unique();
-    if (!tokenRecord) {
-      throw new Error("Invalid token");
-    }
-    const { room, user } = tokenRecord;
-
+  returns: {
+    roomToken: v.string(),
+    presenceToken: v.string(),
+  },
+  handler: async (ctx, { room, user, interval = 10000 }) => {
     const state = await ctx.db
       .query("presence")
       .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
@@ -170,41 +132,66 @@ export const heartbeat = mutation({
       await ctx.db.delete(scheduledDisconnect._id);
     }
 
+    // Generate tokens to list and disconnect.
+    let roomToken = null;
+    const roomTokenRecord = await ctx.db
+      .query("roomTokens")
+      .withIndex("room", (q) => q.eq("room", room))
+      .unique();
+    if (roomTokenRecord) {
+      roomToken = roomTokenRecord.token;
+    } else {
+      roomToken = crypto.randomUUID();
+      await ctx.db.insert("roomTokens", { room, token: roomToken });
+    }
+    let presenceToken = null;
+    const presenceTokenRecord = await ctx.db
+      .query("presenceTokens")
+      .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
+      .unique();
+    if (presenceTokenRecord) {
+      presenceToken = presenceTokenRecord.token;
+    } else {
+      presenceToken = crypto.randomUUID();
+      await ctx.db.insert("presenceTokens", { user, room, token: presenceToken });
+    }
+
     // Schedule disconnect if no heartbeat for 2.5x heartbeat period and no graceful disconnect.
     const scheduledDisconnect = await ctx.scheduler.runAfter(
       interval * 2.5,
       api.public.disconnect,
-      { token }
+      { presenceToken }
     );
     await ctx.db.insert("scheduledDisconnections", {
       room,
       user,
       scheduledDisconnect,
     });
+
+    return { roomToken, presenceToken };
   },
 });
 
 // List presence state for all users in the room, up to the limit of users.
 export const list = query({
   args: {
-    token: v.string(),
+    roomToken: v.string(),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, { token, limit = 104 }) => {
-    // Gracefully handle first renders where the token is not yet set.
-    if (!token) {
-      console.log("ignoring missing token");
+  handler: async (ctx, { roomToken, limit = 104 }) => {
+    if (!roomToken) {
+      console.log("missing token");
       return [];
     }
-
-    const tokenRecord = await ctx.db
-      .query("tokens")
-      .withIndex("token", (q) => q.eq("token", token))
+    const roomTokenRecord = await ctx.db
+      .query("roomTokens")
+      .withIndex("token", (q) => q.eq("token", roomToken))
       .unique();
-    if (!tokenRecord) {
-      throw new Error("Invalid token");
+    if (!roomTokenRecord) {
+      console.log("invalid room token", roomToken);
+      return [];
     }
-    const { room } = tokenRecord;
+    const { room } = roomTokenRecord;
 
     // Order by online, then lastDisconnected.
     const online = await ctx.db
@@ -228,28 +215,30 @@ export const list = query({
 // Gracefully disconnect a user.
 export const disconnect = mutation({
   args: {
-    token: v.string(),
+    presenceToken: v.string(),
   },
-  handler: async (ctx, { token }) => {
-    const tokenRecord = await ctx.db
-      .query("tokens")
-      .withIndex("token", (q) => q.eq("token", token))
+  handler: async (ctx, { presenceToken }) => {
+    const presenceTokenRecord = await ctx.db
+      .query("presenceTokens")
+      .withIndex("token", (q) => q.eq("token", presenceToken))
       .unique();
-    if (!tokenRecord) {
-      throw new Error("Invalid token");
+    if (!presenceTokenRecord) {
+      return;
     }
-    const { room, user } = tokenRecord;
+    await ctx.db.delete(presenceTokenRecord._id);
+    const { room, user } = presenceTokenRecord;
 
     const state = await ctx.db
       .query("presence")
       .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
       .unique();
-    if (!state) {
+    if (!state || !state.online) {
       return;
     }
-    if (!state.online) {
-      return;
-    }
+    await ctx.db.patch(state._id, {
+      online: false,
+      lastDisconnected: Date.now(),
+    });
 
     const scheduledDisconnect = await ctx.db
       .query("scheduledDisconnections")
@@ -260,10 +249,5 @@ export const disconnect = mutation({
     }
     await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
     await ctx.db.delete(scheduledDisconnect._id);
-
-    await ctx.db.patch(state._id, {
-      online: false,
-      lastDisconnected: Date.now(),
-    });
   },
 });

@@ -2,9 +2,6 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // XXX instead of using room and user as unique keys use tokens
-  // XXX add metadata
-
   // Main presence state for users in rooms. Room is a unique identifier for a
   // "room" which is a presence group, e.g., a chat room, a document, etc. User
   // is a unique identifier for a user in the room.
@@ -18,13 +15,24 @@ export default defineSchema({
     .index("room_user", ["room", "user"])
     .index("room_order", ["room", "online", "lastDisconnected"]),
 
-  // A record of secret tokens used to identify users in a room. This allows us
-  // to avoid auth for the list, heartbeat and disconnect functions.
-  tokens: defineTable({
+  // Temporary tokens granting access to list presence in a room. These allow
+  // all members to share the same cached query while offering some security.
+  roomTokens: defineTable({
     token: v.string(),
     room: v.string(),
+  })
+    .index("token", ["token"])
+    .index("room", ["room"]),
+
+  // Temporary tokens granting access to user operations in a room. These allow
+  // running disconnect etc without auth.
+  presenceTokens: defineTable({
+    token: v.string(),
     user: v.string(),
-  }).index("token", ["token"]),
+    room: v.string(),
+  })
+    .index("token", ["token"])
+    .index("room_user", ["room", "user"]),
 
   // A record of scheduled jobs that are used to disconnect users that have
   // transitioned to offline. This is stored as a separate table so queries
@@ -34,7 +42,5 @@ export default defineSchema({
     room: v.string(),
     user: v.string(),
     scheduledDisconnect: v.id("_scheduled_functions"),
-  })
-    .index("user", ["user"])
-    .index("room_user", ["room", "user"]),
+  }).index("room_user", ["room", "user"]),
 });

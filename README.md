@@ -51,21 +51,22 @@ export const presence = new Presence(components.presence);
 export const heartbeat = mutation({
   args: { room: v.string(), user: v.string(), interval: v.number() },
   handler: async (ctx, { room, user, interval }) => {
+    // TODO: Add your auth checks here.
     return await presence.heartbeat(ctx, room, user, interval);
   },
 });
 
 export const list = query({
-  args: { room: v.string() },
-  handler: async (ctx, { room }) => {
-    return await presence.list(ctx, room);
+  args: { roomToken: v.string() },
+  handler: async (ctx, { roomToken }) => {
+    return await presence.list(ctx, roomToken);
   },
 });
 
 export const disconnect = mutation({
-  args: { room: v.string(), user: v.string() },
-  handler: async (ctx, { room, user }) => {
-    return await presence.disconnect(ctx, room, user);
+  args: { presenceToken: v.string() },
+  handler: async (ctx, { presenceToken }) => {
+    return await presence.disconnect(ctx, presenceToken);
   },
 });
 ```
@@ -73,8 +74,6 @@ export const disconnect = mutation({
 A `Presence` React component can be instantiated from your client code like this:
 
 `src/App.tsx`
-
-XXX: fix comments
 
 ```tsx
 export default function App(): React.ReactElement {

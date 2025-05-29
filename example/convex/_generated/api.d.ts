@@ -41,52 +41,22 @@ export declare const internal: FilterApi<
 export declare const components: {
   presence: {
     public: {
-      deregister: FunctionReference<
-        "mutation",
-        "internal",
-        { token: string },
-        any
-      >;
       disconnect: FunctionReference<
         "mutation",
         "internal",
-        { token: string },
+        { presenceToken: string },
         any
       >;
       heartbeat: FunctionReference<
         "mutation",
         "internal",
-        { interval?: number; token: string },
-        any
+        { interval?: number; room: string; user: string },
+        { presenceToken: string; roomToken: string }
       >;
       list: FunctionReference<
         "query",
         "internal",
-        { limit?: number; token: string },
-        any
-      >;
-      register: FunctionReference<
-        "mutation",
-        "internal",
-        { expiresAfterMs?: number; room: string; user: string },
-        any
-      >;
-      remove: FunctionReference<
-        "mutation",
-        "internal",
-        { room: string; user: string },
-        any
-      >;
-      removeRoom: FunctionReference<
-        "mutation",
-        "internal",
-        { room: string },
-        any
-      >;
-      removeUser: FunctionReference<
-        "mutation",
-        "internal",
-        { user: string },
+        { limit?: number; roomToken: string },
         any
       >;
     };
