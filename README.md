@@ -14,7 +14,7 @@ The most common use case for this component is via the usePresence hook, which
 takes care of sending heartbeart messages to the server and gracefully
 disconnecting a user when the tab is closed.
 
-See `../../example` for an example of how to incorporate this hook into your
+See `example` for an example of how to incorporate this hook into your
 application.
 
 ## Installation
@@ -75,15 +75,9 @@ A `Presence` React component can be instantiated from your client code like this
 `src/App.tsx`
 
 ```tsx
-import { useState } from "react";
-import { api } from "../convex/_generated/api";
-import usePresence from "@convex-dev/presence/react";
-import FacePile from "@convex-dev/presence/facepile";
-
 export default function App(): React.ReactElement {
   const [name] = useState(() => "User " + Math.floor(Math.random() * 10000));
-  const convexUrl = import.meta.env.VITE_CONVEX_URL;
-  const presenceState = usePresence(api.presence, convexUrl, "my-chat-room", name);
+  const presenceState = usePresence(api.presence, "my-chat-room", name);
 
   return (
     <main>
@@ -93,4 +87,6 @@ export default function App(): React.ReactElement {
 }
 ```
 
-This uses the basic `FacePile` component included with this package but you can easily copy this code and use the `usePresence` hook directly to implement your own styling.
+This uses the basic `FacePile` component included with this package but you can
+easily copy this code and use the `usePresence` hook directly to implement your
+own styling.
