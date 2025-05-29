@@ -74,6 +74,8 @@ A `Presence` React component can be instantiated from your client code like this
 
 `src/App.tsx`
 
+XXX: fix comments
+
 ```tsx
 export default function App(): React.ReactElement {
   const [name] = useState(() => "User " + Math.floor(Math.random() * 10000));

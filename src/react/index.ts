@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation, useConvex } from "convex/react";
 import { FunctionReference } from "convex/server";
 import useSingleFlight from "./useSingleFlight.js";
@@ -8,6 +8,8 @@ import useSingleFlight from "./useSingleFlight.js";
 if (typeof window === "undefined") {
   throw new Error("this is frontend code, but it's running somewhere else!");
 }
+
+// XXX fix comment
 
 // Interface in your Convex app /convex directory that implements these
 // functions by calling into the presence component, e.g., like this:
@@ -35,13 +37,10 @@ if (typeof window === "undefined") {
 //   },
 // });
 export interface PresenceAPI {
-  list: FunctionReference<"query", "public", { room: string }, State[]>;
-  heartbeat: FunctionReference<
-    "mutation",
-    "public",
-    { room: string; user: string; interval: number }
-  >;
-  disconnect: FunctionReference<"mutation", "public", { room: string; user: string }>;
+  list: FunctionReference<"query", "public", { token: string }, State[]>;
+  heartbeat: FunctionReference<"mutation", "public", { token: string; interval: number }>;
+  disconnect: FunctionReference<"mutation", "public", { token: string }>;
+  register: FunctionReference<"mutation", "public", { room: string; user: string }, string>;
 }
 
 // Presence state for a user within the given room.
@@ -75,21 +74,62 @@ export default function usePresence(
   const convex = useConvex();
   const baseUrl = convexUrl ?? convex.url;
 
-  const state = useQuery(presence.list, { room });
+  // Whenever we load the hook we need to register with the backend to get a
+  // token to use to maintain presence state.
+  const register = useMutation(presence.register);
+  const [token, setToken] = useState<string | null>(null);
+  const hasRegistered = useRef(false);
+
+  useEffect(() => {
+    const registerUser = async () => {
+      if (hasRegistered.current) return;
+      hasRegistered.current = true;
+      console.log("mount registering user", room, user);
+      const newToken = await register({ room, user });
+      console.log("registered user", room, user, newToken);
+      setToken(newToken);
+    };
+    void registerUser();
+  }, [register, room, user]);
+
+  const state = useQuery(presence.list, { token: token ?? "" });
   const heartbeat = useSingleFlight(useMutation(presence.heartbeat));
   const disconnect = useMutation(presence.disconnect);
 
   useEffect(() => {
+    if (!token) return;
+    console.log("using token", token);
+
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
     // Continually schedule heartbeats.
     const startHeartbeat = () => {
-      void heartbeat({ room, user, interval });
+      if (!token) return;
+
+      const sendHeartbeat = async () => {
+        try {
+          await heartbeat({ token, interval });
+        } catch (e) {
+          // XXX check if this is the right error
+          if (e instanceof Error && e.message.includes("Invalid token")) {
+            // Token expired, re-register
+            // XXX do we need single flighting?
+            console.log("token expired, re-registering user", room, user);
+            const newToken = await register({ room, user });
+            setToken(newToken);
+          } else {
+            // Re-throw other errors
+            throw e;
+          }
+        }
+      };
+      void sendHeartbeat();
       if (intervalId) {
         clearInterval(intervalId);
       }
       intervalId = setInterval(() => {
-        void heartbeat({ room, user, interval });
+        if (!token) return;
+        void sendHeartbeat();
       }, interval);
     };
 
@@ -115,10 +155,11 @@ export default function usePresence(
 
     // Disconnect on tab close.
     const handleBeforeUnload = () => {
+      if (!token) return;
       const mutationUrl = `${baseUrl}/api/mutation`;
       const json = JSON.stringify({
         path: "presence:disconnect",
-        args: { room: room, user: user },
+        args: { token },
       });
       const blob = new Blob([json], { type: "application/json" });
       navigator.sendBeacon(mutationUrl, blob);
@@ -130,9 +171,12 @@ export default function usePresence(
       stopHeartbeat();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      void disconnect({ room, user });
+      if (token) {
+        // XXX should we deregister too?
+        void disconnect({ token });
+      }
     };
-  }, [heartbeat, disconnect, room, user, baseUrl]);
+  }, [heartbeat, disconnect, token, baseUrl, interval]);
 
   // Move own user to the front.
   return state?.sort((a, b) => {

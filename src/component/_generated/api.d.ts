@@ -29,24 +29,34 @@ declare const fullApi: ApiFromModules<{
 }>;
 export type Mounts = {
   public: {
-    disconnect: FunctionReference<
-      "mutation",
-      "public",
-      { room: string; user: string },
-      any
-    >;
+    deregister: FunctionReference<"mutation", "public", { token: string }, any>;
+    disconnect: FunctionReference<"mutation", "public", { token: string }, any>;
     heartbeat: FunctionReference<
       "mutation",
       "public",
-      { interval?: number; room: string; user: string },
+      { interval?: number; token: string },
       any
     >;
     list: FunctionReference<
       "query",
       "public",
-      { limit?: number; room: string },
+      { limit?: number; token: string },
       any
     >;
+    register: FunctionReference<
+      "mutation",
+      "public",
+      { expiresAfterMs?: number; room: string; user: string },
+      any
+    >;
+    remove: FunctionReference<
+      "mutation",
+      "public",
+      { room: string; user: string },
+      any
+    >;
+    removeRoom: FunctionReference<"mutation", "public", { room: string }, any>;
+    removeUser: FunctionReference<"mutation", "public", { user: string }, any>;
   };
 };
 // For now fullApiWithMounts is only fullApi which provides
