@@ -50,6 +50,75 @@ export interface State {
   lastDisconnected: number;
 }
 
+// Hook to register a user within a room and get a token.
+function useToken(
+  presence: PresenceAPI,
+  room: string,
+  user: string
+): [string | null, (token: string) => void] {
+  const register = useMutation(presence.register);
+  const [token, setToken] = useState<string | null>(null);
+  const hasRegistered = useRef(false);
+
+  useEffect(() => {
+    if (hasRegistered.current) return;
+    hasRegistered.current = true;
+    void register({ room, user }).then(setToken);
+  }, [register, room, user]);
+
+  return [token, setToken];
+}
+
+// Hook for managing heartbeats and cleanup.
+function useHeartbeat(
+  presence: PresenceAPI,
+  token: string | null,
+  interval: number,
+  baseUrl: string
+) {
+  const heartbeat = useSingleFlight(useMutation(presence.heartbeat));
+  const disconnect = useMutation(presence.disconnect);
+
+  useEffect(() => {
+    if (!token) return;
+
+    // Send heartbeat and set up interval.
+    const sendHeartbeat = () => void heartbeat({ token, interval });
+    const intervalId = setInterval(sendHeartbeat, interval);
+    void sendHeartbeat();
+
+    // Handle page unload.
+    const handleUnload = () => {
+      const blob = new Blob([JSON.stringify({ path: "presence:disconnect", args: { token } })], {
+        type: "application/json",
+      });
+      navigator.sendBeacon(`${baseUrl}/api/mutation`, blob);
+    };
+
+    // Handle visibility changes.
+    const handleVisibility = () => {
+      if (document.hidden) {
+        clearInterval(intervalId);
+        void disconnect({ token });
+      } else {
+        void sendHeartbeat();
+        setInterval(sendHeartbeat, interval);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("beforeunload", handleUnload);
+
+    // Cleanup.
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("beforeunload", handleUnload);
+      void disconnect({ token });
+    };
+  }, [heartbeat, disconnect, token, baseUrl, interval]);
+}
+
 // React hook for maintaining presence state.
 //
 // This hook is designed to be efficient and only sends a message to users
@@ -68,8 +137,8 @@ export default function usePresence(
   const convex = useConvex();
   const baseUrl = convexUrl ?? convex.url;
 
-  const [token, setToken] = useToken(presence, room, user);
-  useHeartbeat(presence, token, setToken, room, user, interval, baseUrl);
+  const [token] = useToken(presence, room, user);
+  useHeartbeat(presence, token, interval, baseUrl);
 
   const state = useQuery(presence.list, { token: token ?? "" });
   // Move own user to the front.
@@ -78,117 +147,4 @@ export default function usePresence(
     if (b.user === user) return 1;
     return 0;
   });
-}
-
-// Hook to register a user within a room and get a token.
-function useToken(
-  presence: PresenceAPI,
-  room: string,
-  user: string
-): [string | null, (token: string) => void] {
-  const register = useMutation(presence.register);
-  const [token, setToken] = useState<string | null>(null);
-  const hasRegistered = useRef(false);
-
-  useEffect(() => {
-    const registerUser = async () => {
-      if (hasRegistered.current) return;
-      hasRegistered.current = true;
-      // XXX do we need single flighting?
-      const newToken = await register({ room, user });
-      setToken(newToken);
-    };
-    void registerUser();
-  }, [register, room, user]);
-
-  return [token, setToken];
-}
-
-// Hook for managing heartbeats and cleanup.
-function useHeartbeat(
-  presence: PresenceAPI,
-  token: string | null,
-  setToken: (token: string) => void,
-  room: string,
-  user: string,
-  interval: number,
-  baseUrl: string
-) {
-  const heartbeat = useSingleFlight(useMutation(presence.heartbeat));
-  const disconnect = useMutation(presence.disconnect);
-  const register = useMutation(presence.register);
-
-  useEffect(() => {
-    if (!token) return;
-
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-
-    const startHeartbeat = () => {
-      if (!token) return;
-      const sendHeartbeat = async () => {
-        try {
-          await heartbeat({ token, interval });
-        } catch (e) {
-          if (e instanceof Error && e.message.includes("Invalid token")) {
-            // XXX check if this is the right error
-            // XXX do we need single flighting?
-            console.log("token expired, re-registering user", room, user);
-            const newToken = await register({ room, user });
-            setToken(newToken);
-          } else {
-            throw e;
-          }
-        }
-      };
-      void sendHeartbeat();
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-      intervalId = setInterval(() => {
-        if (!token) return;
-        void sendHeartbeat();
-      }, interval);
-    };
-
-    const stopHeartbeat = () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
-    };
-
-    if (!document.hidden) {
-      startHeartbeat();
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        stopHeartbeat();
-      } else {
-        startHeartbeat();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    const handleBeforeUnload = () => {
-      if (!token) return;
-      const mutationUrl = `${baseUrl}/api/mutation`;
-      const json = JSON.stringify({
-        path: "presence:disconnect",
-        args: { token },
-      });
-      const blob = new Blob([json], { type: "application/json" });
-      navigator.sendBeacon(mutationUrl, blob);
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      stopHeartbeat();
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-      if (token) {
-        void disconnect({ token });
-      }
-    };
-  }, [heartbeat, disconnect, token, baseUrl, interval, register, room, user, setToken]);
 }
