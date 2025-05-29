@@ -72,15 +72,18 @@ export default function usePresence(
   const hasMounted = useRef(false);
   const convex = useConvex();
   const baseUrl = convexUrl ?? convex.url;
+
   const [roomToken, setRoomToken] = useState<string | null>(null);
+  const roomTokenRef = useRef<string | null>(null);
   const [presenceToken, setPresenceToken] = useState<string | null>(null);
   const presenceTokenRef = useRef<string | null>(null);
-  const roomTokenRef = useRef<string | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const heartbeat = useSingleFlight(useMutation(presence.heartbeat));
   const disconnect = useSingleFlight(useMutation(presence.disconnect));
 
   useEffect(() => {
-    // Update refs whenever tokens change
+    // Update refs whenever tokens change.
     presenceTokenRef.current = presenceToken;
     roomTokenRef.current = roomToken;
   }, [presenceToken, roomToken]);
@@ -92,7 +95,7 @@ export default function usePresence(
       setRoomToken(result.roomToken);
       setPresenceToken(result.presenceToken);
     };
-    const intervalId = setInterval(sendHeartbeat, interval);
+    intervalRef.current = setInterval(sendHeartbeat, interval);
     void sendHeartbeat();
 
     // Handle page unload.
@@ -117,21 +120,29 @@ export default function usePresence(
     // Handle visibility changes.
     const handleVisibility = async () => {
       if (document.hidden) {
-        clearInterval(intervalId);
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
         if (presenceTokenRef.current) {
           await disconnect({ presenceToken: presenceTokenRef.current });
         }
       } else {
         void sendHeartbeat();
-        setInterval(sendHeartbeat, interval);
+        intervalRef.current = setInterval(sendHeartbeat, interval);
       }
     };
-    document.addEventListener("visibilitychange", () => void handleVisibility());
+    const wrappedHandleVisibility = () => {
+      handleVisibility().catch(console.error);
+    };
+    document.addEventListener("visibilitychange", wrappedHandleVisibility);
 
     // Cleanup.
     return () => {
-      clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", handleVisibility);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      document.removeEventListener("visibilitychange", wrappedHandleVisibility);
       window.removeEventListener("beforeunload", handleUnload);
       // Don't disconnect on first render in strict mode.
       if (hasMounted.current) {
@@ -149,8 +160,7 @@ export default function usePresence(
   const state = useQuery(presence.list, { roomToken: roomTokenRef.current ?? "" });
   return useMemo(
     () =>
-      // Move own user to the front.
-      state?.sort((a, b) => {
+      state?.slice().sort((a, b) => {
         if (a.user === user) return -1;
         if (b.user === user) return 1;
         return 0;
