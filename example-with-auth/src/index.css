@@ -1,0 +1,6 @@
+main {
+  padding: 2em;
+  width: min(800px, 95vw);
+  margin: 0 auto;
+  text-align: center;
+}

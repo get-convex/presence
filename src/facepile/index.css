@@ -43,6 +43,15 @@
   opacity: 0.4;
 }
 
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  vertical-align: top;
+}
+
 .more {
   color: #4b5563;
   font-size: 0.875rem;
@@ -126,6 +135,15 @@
 
 .dropdown-emoji.offline span[role="img"] {
   opacity: 0.4;
+}
+
+.dropdown-emoji img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  vertical-align: top;
 }
 
 .dropdown-info {

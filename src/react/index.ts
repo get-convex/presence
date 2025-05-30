@@ -52,6 +52,10 @@ export interface State {
   user: string;
   online: boolean;
   lastDisconnected: number;
+  // Set these accordingly in your Convex app.
+  // See ../../example-with-auth/convex/presence.ts for an example.
+  name?: string;
+  image?: string;
 }
 
 // React hook for maintaining presence state.

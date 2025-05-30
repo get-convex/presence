@@ -55,10 +55,10 @@ function Avatar({ presence, index, total }: { presence: State; index: number; to
       style={{ "--z": total - index } as React.CSSProperties}
     >
       <span role="img" aria-label="user">
-        😊
+        {presence.image ? <img src={presence.image} alt="user" /> : "😊"}
       </span>
       <span className="tooltip">
-        <div className="tooltip-user">{presence.user}</div>
+        <div className="tooltip-user">{presence.name || presence.user}</div>
         <div className="tooltip-status">
           {presence.online ? "Online now" : getTimeAgo(presence.lastDisconnected)}
         </div>
@@ -74,11 +74,11 @@ function Dropdown({ users }: { users: State[] }) {
         <div key={presence.user} className="dropdown-row">
           <div className={`dropdown-emoji${!presence.online ? " offline" : ""}`}>
             <span role="img" aria-label="user">
-              😊
+              {presence.image ? <img src={presence.image} alt="user" /> : "😊"}
             </span>
           </div>
           <div className="dropdown-info">
-            <div className="dropdown-user">{presence.user}</div>
+            <div className="dropdown-user">{presence.name || presence.user}</div>
             <div className="dropdown-status">
               {presence.online ? "Online now" : getTimeAgo(presence.lastDisconnected)}
             </div>
