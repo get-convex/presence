@@ -69,9 +69,9 @@ export const list = query({
 
 // This gets called over the websocket but also over http from sendBeacon.
 export const disconnect = mutation({
-  args: { presenceToken: v.string() },
-  handler: async (ctx, { presenceToken }) => {
-    console.log("disconnecting presence token", presenceToken);
-    return await presence.disconnect(ctx, presenceToken);
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    console.log("disconnecting session token", sessionToken);
+    return await presence.disconnect(ctx, sessionToken);
   },
 });

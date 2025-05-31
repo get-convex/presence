@@ -64,9 +64,9 @@ export const list = query({
 });
 
 export const disconnect = mutation({
-  args: { presenceToken: v.string() },
-  handler: async (ctx, { presenceToken }) => {
-    return await presence.disconnect(ctx, presenceToken);
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    return await presence.disconnect(ctx, sessionToken);
   },
 });
 ```

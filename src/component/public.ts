@@ -10,7 +10,6 @@ import { api } from "./_generated/api.js";
 
 // TODO: reinstate all the user management functions
 // TODO: rotate the room tokens
-// TODO: make sure this works with user metadata
 
 // // Remove the user from the room.
 // // This typically shouldn't be exposed to end users
@@ -99,7 +98,7 @@ export const heartbeat = mutation({
   },
   returns: v.object({
     roomToken: v.string(),
-    presenceToken: v.string(),
+    sessionToken: v.string(),
   }),
   handler: async (ctx, { room, user, sessionId, interval = 10000 }) => {
     // Update or create session
@@ -109,47 +108,32 @@ export const heartbeat = mutation({
         q.eq("room", room).eq("user", user).eq("sessionId", sessionId)
       )
       .unique();
-
     if (!session) {
-      await ctx.db.insert("sessions", {
-        room,
-        user,
-        sessionId,
-      });
+      await ctx.db.insert("sessions", { room, user, sessionId });
     }
 
-    // Update user presence - since we have at least one active session, user should be online
+    // Set user online if needed.
     const userPresence = await ctx.db
       .query("presence")
       .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
       .unique();
-
     if (!userPresence) {
-      await ctx.db.insert("presence", {
-        room,
-        user,
-        online: true,
-        lastDisconnected: 0,
-      });
+      await ctx.db.insert("presence", { room, user, online: true, lastDisconnected: 0 });
     } else if (!userPresence.online) {
-      await ctx.db.patch(userPresence._id, {
-        online: true,
-        lastDisconnected: 0,
-      });
+      await ctx.db.patch(userPresence._id, { online: true, lastDisconnected: 0 });
     }
 
-    // Cancel any existing scheduled disconnect for this session
-    const existingScheduledDisconnect = await ctx.db
+    // Cancel any existing timeout for session.
+    const existingTimeout = await ctx.db
       .query("sessionTimeouts")
       .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
       .unique();
-
-    if (existingScheduledDisconnect) {
-      await ctx.scheduler.cancel(existingScheduledDisconnect.scheduledFunctionId);
-      await ctx.db.delete(existingScheduledDisconnect._id);
+    if (existingTimeout) {
+      await ctx.scheduler.cancel(existingTimeout.scheduledFunctionId);
+      await ctx.db.delete(existingTimeout._id);
     }
 
-    // Generate tokens to list and disconnect.
+    // Generate token to list room presence.
     let roomToken: string;
     const roomTokenRecord = await ctx.db
       .query("roomTokens")
@@ -162,33 +146,26 @@ export const heartbeat = mutation({
       await ctx.db.insert("roomTokens", { room, token: roomToken });
     }
 
-    let presenceToken: string;
-    const presenceTokenRecord = await ctx.db
+    // Generate token to disconnect session.
+    let sessionToken: string;
+    const sessionTokenRecord = await ctx.db
       .query("sessionTokens")
       .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
       .unique();
-    if (presenceTokenRecord) {
-      presenceToken = presenceTokenRecord.token;
+    if (sessionTokenRecord) {
+      sessionToken = sessionTokenRecord.token;
     } else {
-      presenceToken = crypto.randomUUID();
-      await ctx.db.insert("sessionTokens", {
-        sessionId,
-        token: presenceToken,
-      });
+      sessionToken = crypto.randomUUID();
+      await ctx.db.insert("sessionTokens", { sessionId, token: sessionToken });
     }
 
-    // Schedule disconnect for this session if no heartbeat for 2.5x heartbeat period
-    const scheduledDisconnect = await ctx.scheduler.runAfter(
-      interval * 2.5,
-      api.public.disconnect,
-      { presenceToken }
-    );
-    await ctx.db.insert("sessionTimeouts", {
-      sessionId,
-      scheduledFunctionId: scheduledDisconnect,
+    // Schedule timeout heartbeat for 2.5x heartbeat period.
+    const timeout = await ctx.scheduler.runAfter(interval * 2.5, api.public.disconnect, {
+      sessionToken: sessionToken,
     });
+    await ctx.db.insert("sessionTimeouts", { sessionId, scheduledFunctionId: timeout });
 
-    return { roomToken, presenceToken };
+    return { roomToken, sessionToken: sessionToken };
   },
 });
 
@@ -238,62 +215,59 @@ export const list = query({
 
 export const disconnect = mutation({
   args: {
-    presenceToken: v.string(),
+    sessionToken: v.string(),
   },
   returns: v.null(),
-  handler: async (ctx, { presenceToken }) => {
-    const presenceTokenRecord = await ctx.db
+  handler: async (ctx, { sessionToken }) => {
+    const sessionTokenRecord = await ctx.db
       .query("sessionTokens")
-      .withIndex("token", (q) => q.eq("token", presenceToken))
+      .withIndex("token", (q) => q.eq("token", sessionToken))
       .unique();
-    if (!presenceTokenRecord) {
+    if (!sessionTokenRecord) {
       return;
     }
-    await ctx.db.delete(presenceTokenRecord._id);
-    const { sessionId } = presenceTokenRecord;
+    await ctx.db.delete(sessionTokenRecord._id);
+    const { sessionId } = sessionTokenRecord;
 
     // Remove the session
     const session = await ctx.db
       .query("sessions")
       .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
       .unique();
-
     if (!session) {
+      console.error("Should not have a session token", sessionToken, "without a session");
       return;
     }
 
     const { room, user } = session;
     await ctx.db.delete(session._id);
 
-    // Check if user has any remaining active sessions
-    const remainingSessions = await ctx.db
-      .query("sessions")
-      .withIndex("room_user_session", (q) => q.eq("room", room).eq("user", user))
-      .collect();
-
-    // Update user presence based on remaining sessions
     const userPresence = await ctx.db
       .query("presence")
       .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
       .unique();
-
-    if (userPresence && userPresence.online && remainingSessions.length === 0) {
-      // User has no more active sessions, mark them as offline
-      await ctx.db.patch(userPresence._id, {
-        online: false,
-        lastDisconnected: Date.now(),
-      });
+    if (!userPresence) {
+      console.error("Should not have a session token", sessionToken, "without a user presence");
+      return;
     }
 
-    // Cancel scheduled disconnect for this session
-    const scheduledDisconnect = await ctx.db
+    // Mark user offline if they don't have any remaining sessions.
+    const remainingSessions = await ctx.db
+      .query("sessions")
+      .withIndex("room_user_session", (q) => q.eq("room", room).eq("user", user))
+      .collect();
+    if (userPresence.online && remainingSessions.length === 0) {
+      await ctx.db.patch(userPresence._id, { online: false, lastDisconnected: Date.now() });
+    }
+
+    // Cancel timeout for this session.
+    const timeout = await ctx.db
       .query("sessionTimeouts")
       .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
       .unique();
-
-    if (scheduledDisconnect) {
-      await ctx.scheduler.cancel(scheduledDisconnect.scheduledFunctionId);
-      await ctx.db.delete(scheduledDisconnect._id);
+    if (timeout) {
+      await ctx.scheduler.cancel(timeout.scheduledFunctionId);
+      await ctx.db.delete(timeout._id);
     }
   },
 });

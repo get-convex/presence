@@ -31,9 +31,9 @@ if (typeof window === "undefined") {
 // });
 //
 // export const disconnect = mutation({
-//   args: { presenceToken: v.string() },
-//   handler: async (ctx, { presenceToken }) => {
-//     return await presence.disconnect(ctx, presenceToken);
+//   args: { sessionToken: v.string() },
+//   handler: async (ctx, { sessionToken }) => {
+//     return await presence.disconnect(ctx, sessionToken);
 //   },
 // });
 export interface PresenceAPI {
@@ -42,9 +42,9 @@ export interface PresenceAPI {
     "mutation",
     "public",
     { room: string; user: string; sessionId: string; interval: number },
-    { roomToken: string; presenceToken: string }
+    { roomToken: string; sessionToken: string }
   >;
-  disconnect: FunctionReference<"mutation", "public", { presenceToken: string }>;
+  disconnect: FunctionReference<"mutation", "public", { sessionToken: string }>;
 }
 
 // Presence state for a user within the given room.
@@ -87,8 +87,8 @@ export default function usePresence(
 
   const [roomToken, setRoomToken] = useState<string | null>(null);
   const roomTokenRef = useRef<string | null>(null);
-  const [presenceToken, setPresenceToken] = useState<string | null>(null);
-  const presenceTokenRef = useRef<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const sessionTokenRef = useRef<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const heartbeat = useSingleFlight(useMutation(presence.heartbeat));
@@ -96,28 +96,28 @@ export default function usePresence(
 
   useEffect(() => {
     // Update refs whenever tokens change.
-    presenceTokenRef.current = presenceToken;
+    sessionTokenRef.current = sessionToken;
     roomTokenRef.current = roomToken;
-  }, [presenceToken, roomToken]);
+  }, [sessionToken, roomToken]);
 
   useEffect(() => {
     // Periodic heartbeats.
     const sendHeartbeat = async () => {
       const result = await heartbeat({ room, user, sessionId, interval });
       setRoomToken(result.roomToken);
-      setPresenceToken(result.presenceToken);
+      setSessionToken(result.sessionToken);
     };
     intervalRef.current = setInterval(sendHeartbeat, interval);
     void sendHeartbeat();
 
     // Handle page unload.
     const handleUnload = () => {
-      if (presenceTokenRef.current) {
+      if (sessionTokenRef.current) {
         const blob = new Blob(
           [
             JSON.stringify({
               path: "presence:disconnect",
-              args: { presenceToken: presenceTokenRef.current },
+              args: { sessionToken: sessionTokenRef.current },
             }),
           ],
           {
@@ -136,8 +136,8 @@ export default function usePresence(
           clearInterval(intervalRef.current);
           intervalRef.current = null;
         }
-        if (presenceTokenRef.current) {
-          await disconnect({ presenceToken: presenceTokenRef.current });
+        if (sessionTokenRef.current) {
+          await disconnect({ sessionToken: sessionTokenRef.current });
         }
       } else {
         void sendHeartbeat();
@@ -158,8 +158,8 @@ export default function usePresence(
       window.removeEventListener("beforeunload", handleUnload);
       // Don't disconnect on first render in strict mode.
       if (hasMounted.current) {
-        if (presenceTokenRef.current) {
-          void disconnect({ presenceToken: presenceTokenRef.current });
+        if (sessionTokenRef.current) {
+          void disconnect({ sessionToken: sessionTokenRef.current });
         }
       }
     };

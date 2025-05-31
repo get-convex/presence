@@ -10,11 +10,7 @@
 
 import type * as presence from "../presence.js";
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
+import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -29,10 +25,7 @@ declare const fullApi: ApiFromModules<{
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 
-export declare const api: FilterApi<
-  typeof fullApiWithMounts,
-  FunctionReference<any, "public">
->;
+export declare const api: FilterApi<typeof fullApiWithMounts, FunctionReference<any, "public">>;
 export declare const internal: FilterApi<
   typeof fullApiWithMounts,
   FunctionReference<any, "internal">
@@ -41,17 +34,12 @@ export declare const internal: FilterApi<
 export declare const components: {
   presence: {
     public: {
-      disconnect: FunctionReference<
-        "mutation",
-        "internal",
-        { presenceToken: string },
-        null
-      >;
+      disconnect: FunctionReference<"mutation", "internal", { sessionToken: string }, null>;
       heartbeat: FunctionReference<
         "mutation",
         "internal",
         { interval?: number; room: string; sessionId: string; user: string },
-        { presenceToken: string; roomToken: string }
+        { sessionToken: string; roomToken: string }
       >;
       list: FunctionReference<
         "query",
