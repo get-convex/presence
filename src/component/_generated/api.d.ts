@@ -10,7 +10,11 @@
 
 import type * as public from "../public.js";
 
-import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -25,12 +29,17 @@ declare const fullApi: ApiFromModules<{
 }>;
 export type Mounts = {
   public: {
-    disconnect: FunctionReference<"mutation", "public", { sessionToken: string }, null>;
+    disconnect: FunctionReference<
+      "mutation",
+      "public",
+      { sessionToken: string },
+      null
+    >;
     heartbeat: FunctionReference<
       "mutation",
       "public",
       { interval?: number; room: string; sessionId: string; user: string },
-      { sessionToken: string; roomToken: string }
+      { roomToken: string; sessionToken: string }
     >;
     list: FunctionReference<
       "query",
@@ -45,7 +54,10 @@ export type Mounts = {
 // Use Mounts for the same type without the inference.
 declare const fullApiWithMounts: typeof fullApi;
 
-export declare const api: FilterApi<typeof fullApiWithMounts, FunctionReference<any, "public">>;
+export declare const api: FilterApi<
+  typeof fullApiWithMounts,
+  FunctionReference<any, "public">
+>;
 export declare const internal: FilterApi<
   typeof fullApiWithMounts,
   FunctionReference<any, "internal">

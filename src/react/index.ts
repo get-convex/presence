@@ -58,11 +58,6 @@ export interface State {
   image?: string;
 }
 
-// Generate a unique session ID for this browser tab
-const generateSessionId = () => {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-};
-
 // React hook for maintaining presence state.
 //
 // This hook is designed to be efficient and only sends a message to users
@@ -82,13 +77,14 @@ export default function usePresence(
   const convex = useConvex();
   const baseUrl = convexUrl ?? convex.url;
 
-  // Generate a unique session ID for this browser tab that persists for the lifetime of the component
-  const [sessionId] = useState(() => generateSessionId());
+  // Each session (browser tab etc) has a unique ID and a token used to disconnect it.
+  const [sessionId] = useState(() => crypto.randomUUID());
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const sessionTokenRef = useRef<string | null>(null);
 
   const [roomToken, setRoomToken] = useState<string | null>(null);
   const roomTokenRef = useRef<string | null>(null);
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
-  const sessionTokenRef = useRef<string | null>(null);
+
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const heartbeat = useSingleFlight(useMutation(presence.heartbeat));
