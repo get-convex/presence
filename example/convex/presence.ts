@@ -1,8 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { components } from "./_generated/api";
 import { v } from "convex/values";
-// TODO change to "@convex-dev/presence"
-import { Presence } from "../../src/client";
+import { Presence } from "@convex-dev/presence";
 
 export const presence = new Presence(components.presence);
 

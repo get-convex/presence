@@ -1,8 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-// TODO: rotate room tokens
-
 export default defineSchema({
   // Main presence state for users in rooms.
   presence: defineTable({
