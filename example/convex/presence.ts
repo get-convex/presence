@@ -10,16 +10,7 @@ export const heartbeat = mutation({
   args: { room: v.string(), user: v.string(), sessionId: v.string(), interval: v.number() },
   handler: async (ctx, { room, user, sessionId, interval }) => {
     // TODO: Add your auth checks here.
-    console.log(
-      "sending heartbeat for room",
-      room,
-      "user",
-      user,
-      "session",
-      sessionId,
-      "with interval",
-      interval
-    );
+    console.log("heartbeat", room, user, sessionId, interval);
     return await presence.heartbeat(ctx, room, user, sessionId, interval);
   },
 });
@@ -28,16 +19,16 @@ export const list = query({
   args: { roomToken: v.string() },
   handler: async (ctx, { roomToken }) => {
     // Avoid adding per-user reads so all subscriptions can share same cache.
-    console.log("listing presence for room token", roomToken);
+    console.log("list", roomToken);
     return await presence.list(ctx, roomToken);
   },
 });
 
-// This gets called over the websocket but also over http from sendBeacon.
 export const disconnect = mutation({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
-    console.log("disconnecting session token", sessionToken);
+    // Can't check auth here because it's called over http from sendBeacon.
+    console.log("disconnect", sessionToken);
     return await presence.disconnect(ctx, sessionToken);
   },
 });

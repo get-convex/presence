@@ -12,32 +12,20 @@ export const getUserId = query({
   args: {},
   returns: v.union(v.string(), v.null()),
   handler: async (ctx) => {
+    console.log("getUserId");
     return await getAuthUserId(ctx);
   },
 });
 
-// Users can now join a room from multiple tabs/sessions without being marked as offline
-
 export const heartbeat = mutation({
   args: { room: v.string(), user: v.string(), sessionId: v.string(), interval: v.number() },
   handler: async (ctx, { room, user, sessionId, interval }) => {
-    console.log(
-      "sending heartbeat for room",
-      room,
-      "user",
-      user,
-      "session",
-      sessionId,
-      "with interval",
-      interval
-    );
-
+    console.log("heartbeat", room, user, sessionId, interval);
     const userId = await getAuthUserId(ctx);
     if (userId === null || userId !== user) {
       // We should probably handle this more gracefully.
       throw new Error("Unauthorized");
     }
-
     return await presence.heartbeat(ctx, room, user, sessionId, interval);
   },
 });
@@ -45,8 +33,7 @@ export const heartbeat = mutation({
 export const list = query({
   args: { roomToken: v.string() },
   handler: async (ctx, { roomToken }) => {
-    console.log("listing presence for room token", roomToken);
-
+    console.log("list", roomToken);
     // Join presence state with user info.
     const presenceList = await presence.list(ctx, roomToken);
     const listWithUserInfo = await Promise.all(
@@ -62,16 +49,15 @@ export const list = query({
         };
       })
     );
-
     return listWithUserInfo;
   },
 });
 
-// This gets called over the websocket but also over http from sendBeacon.
 export const disconnect = mutation({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
-    console.log("disconnecting session token", sessionToken);
+    // Can't check auth here because it's called over http from sendBeacon.
+    console.log("disconnect", sessionToken);
     return await presence.disconnect(ctx, sessionToken);
   },
 });
