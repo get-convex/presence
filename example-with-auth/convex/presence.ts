@@ -18,15 +18,15 @@ export const getUserId = query({
 });
 
 export const heartbeat = mutation({
-  args: { room: v.string(), user: v.string(), sessionId: v.string(), interval: v.number() },
-  handler: async (ctx, { room, user, sessionId, interval }) => {
-    console.log("heartbeat", room, user, sessionId, interval);
-    const userId = await getAuthUserId(ctx);
-    if (userId === null || userId !== user) {
+  args: { roomId: v.string(), userId: v.string(), sessionId: v.string(), interval: v.number() },
+  handler: async (ctx, { roomId, userId, sessionId, interval }) => {
+    console.log("heartbeat", roomId, userId, sessionId, interval);
+    const authUserId = await getAuthUserId(ctx);
+    if (authUserId === null || authUserId !== userId) {
       // We should probably handle this more gracefully.
       throw new Error("Unauthorized");
     }
-    return await presence.heartbeat(ctx, room, user, sessionId, interval);
+    return await presence.heartbeat(ctx, roomId, userId, sessionId, interval);
   },
 });
 

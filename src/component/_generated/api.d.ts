@@ -38,7 +38,7 @@ export type Mounts = {
     heartbeat: FunctionReference<
       "mutation",
       "public",
-      { interval?: number; room: string; sessionId: string; user: string },
+      { interval?: number; roomId: string; sessionId: string; userId: string },
       { roomToken: string; sessionToken: string }
     >;
     list: FunctionReference<

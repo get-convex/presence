@@ -15,10 +15,10 @@ if (typeof window === "undefined") {
 // export const presence = new Presence(components.presence);
 //
 // export const heartbeat = mutation({
-//   args: { room: v.string(), user: v.string(), sessionId: v.string(), interval: v.number() },
-//   handler: async (ctx, { room, user, sessionId, interval }) => {
+//   args: { roomId: v.string(), userId: v.string(), sessionId: v.string(), interval: v.number() },
+//   handler: async (ctx, { roomId, userId, sessionId, interval }) => {
 //     // TODO: Add your auth checks here.
-//     return await presence.heartbeat(ctx, room, user, sessionId, interval);
+//     return await presence.heartbeat(ctx, roomId, userId, sessionId, interval);
 //   },
 // });
 //
@@ -33,23 +33,24 @@ if (typeof window === "undefined") {
 // export const disconnect = mutation({
 //   args: { sessionToken: v.string() },
 //   handler: async (ctx, { sessionToken }) => {
+//     // Can't check auth here because it's called over http from sendBeacon.
 //     return await presence.disconnect(ctx, sessionToken);
 //   },
 // });
 export interface PresenceAPI {
-  list: FunctionReference<"query", "public", { roomToken: string }, State[]>;
+  list: FunctionReference<"query", "public", { roomToken: string }, PresenceState[]>;
   heartbeat: FunctionReference<
     "mutation",
     "public",
-    { room: string; user: string; sessionId: string; interval: number },
+    { roomId: string; userId: string; sessionId: string; interval: number },
     { roomToken: string; sessionToken: string }
   >;
   disconnect: FunctionReference<"mutation", "public", { sessionToken: string }>;
 }
 
 // Presence state for a user within the given room.
-export interface State {
-  user: string;
+export interface PresenceState {
+  userId: string;
   online: boolean;
   lastDisconnected: number;
   // Set these accordingly in your Convex app.
@@ -68,11 +69,11 @@ export interface State {
 // example of how to incorporate this hook into your application.
 export default function usePresence(
   presence: PresenceAPI,
-  room: string,
-  user: string,
+  roomId: string,
+  userId: string,
   interval: number = 10000,
   convexUrl?: string
-): State[] | undefined {
+): PresenceState[] | undefined {
   const hasMounted = useRef(false);
   const convex = useConvex();
   const baseUrl = convexUrl ?? convex.url;
@@ -99,7 +100,7 @@ export default function usePresence(
   useEffect(() => {
     // Periodic heartbeats.
     const sendHeartbeat = async () => {
-      const result = await heartbeat({ room, user, sessionId, interval });
+      const result = await heartbeat({ roomId, userId, sessionId, interval });
       setRoomToken(result.roomToken);
       setSessionToken(result.sessionToken);
     };
@@ -159,7 +160,7 @@ export default function usePresence(
         }
       }
     };
-  }, [heartbeat, disconnect, room, user, baseUrl, interval, sessionId]);
+  }, [heartbeat, disconnect, roomId, userId, baseUrl, interval, sessionId]);
 
   useEffect(() => {
     hasMounted.current = true;
@@ -169,10 +170,10 @@ export default function usePresence(
   return useMemo(
     () =>
       state?.slice().sort((a, b) => {
-        if (a.user === user) return -1;
-        if (b.user === user) return 1;
+        if (a.userId === userId) return -1;
+        if (b.userId === userId) return 1;
         return 0;
       }),
-    [state, user]
+    [state, userId]
   );
 }

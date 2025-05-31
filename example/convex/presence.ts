@@ -7,11 +7,11 @@ import { Presence } from "../../src/client";
 export const presence = new Presence(components.presence);
 
 export const heartbeat = mutation({
-  args: { room: v.string(), user: v.string(), sessionId: v.string(), interval: v.number() },
-  handler: async (ctx, { room, user, sessionId, interval }) => {
+  args: { roomId: v.string(), userId: v.string(), sessionId: v.string(), interval: v.number() },
+  handler: async (ctx, { roomId, userId, sessionId, interval }) => {
     // TODO: Add your auth checks here.
-    console.log("heartbeat", room, user, sessionId, interval);
-    return await presence.heartbeat(ctx, room, user, sessionId, interval);
+    console.log("heartbeat", roomId, userId, sessionId, interval);
+    return await presence.heartbeat(ctx, roomId, userId, sessionId, interval);
   },
 });
 

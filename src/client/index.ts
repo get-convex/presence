@@ -26,12 +26,17 @@ export class Presence {
   // a graceful disconnect message is received. Returns room and session tokens.
   async heartbeat(
     ctx: RunMutationCtx,
-    room: string,
-    user: string,
+    roomId: string,
+    userId: string,
     sessionId: string,
     interval: number
   ) {
-    return ctx.runMutation(this.component.public.heartbeat, { room, user, sessionId, interval });
+    return ctx.runMutation(this.component.public.heartbeat, {
+      roomId,
+      userId,
+      sessionId,
+      interval,
+    });
   }
 
   // List presence state for all users in the room, up to the limit of users.
