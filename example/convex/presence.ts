@@ -1,16 +1,26 @@
 import { mutation, query } from "./_generated/server";
 import { components } from "./_generated/api";
 import { v } from "convex/values";
-import { Presence } from "@convex-dev/presence";
+// TODO change to "@convex-dev/presence"
+import { Presence } from "../../src/client";
 
 export const presence = new Presence(components.presence);
 
 export const heartbeat = mutation({
-  args: { room: v.string(), user: v.string(), interval: v.number() },
-  handler: async (ctx, { room, user, interval }) => {
+  args: { room: v.string(), user: v.string(), sessionId: v.string(), interval: v.number() },
+  handler: async (ctx, { room, user, sessionId, interval }) => {
     // TODO: Add your auth checks here.
-    console.log("sending heartbeat for room", room, "user", user, "with interval", interval);
-    return await presence.heartbeat(ctx, room, user, interval);
+    console.log(
+      "sending heartbeat for room",
+      room,
+      "user",
+      user,
+      "session",
+      sessionId,
+      "with interval",
+      interval
+    );
+    return await presence.heartbeat(ctx, room, user, sessionId, interval);
   },
 });
 

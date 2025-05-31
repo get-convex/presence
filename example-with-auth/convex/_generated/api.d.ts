@@ -54,7 +54,7 @@ export declare const components: {
       heartbeat: FunctionReference<
         "mutation",
         "internal",
-        { interval?: number; room: string; user: string },
+        { interval?: number; room: string; sessionId: string; user: string },
         { presenceToken: string; roomToken: string }
       >;
       list: FunctionReference<

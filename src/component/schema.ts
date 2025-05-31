@@ -1,22 +1,30 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+// TODO: rotate room tokens
+
 export default defineSchema({
-  // Main presence state for users in rooms. Room is a unique identifier for a
-  // "room" which is a presence group, e.g., a chat room, a document, etc. User
-  // is a unique identifier for a user in the room.
+  // Main presence state for users in rooms.
   presence: defineTable({
-    room: v.string(),
-    user: v.string(),
-    online: v.boolean(),
+    room: v.string(), // Unit of presence, e.g., chat room, document, etc.
+    user: v.string(), // Unique identifier for a user in the room.
+    online: v.boolean(), // Whether any user session is online.
     lastDisconnected: v.number(), // Timestamp of last disconnect.
   })
-    .index("user", ["user"])
     .index("room_user", ["room", "user"])
     .index("room_order", ["room", "online", "lastDisconnected"]),
 
-  // Temporary tokens granting access to list presence in a room. These allow
-  // all members to share the same cached query while offering some security.
+  // Individual sessions for each browser tab/connection.
+  sessions: defineTable({
+    room: v.string(),
+    user: v.string(),
+    sessionId: v.string(),
+  })
+    .index("room_user_session", ["room", "user", "sessionId"])
+    .index("sessionId", ["sessionId"]),
+
+  // Temporary tokens to list presence in a room. These allow all members to
+  // share the same cached query while offering some security.
   roomTokens: defineTable({
     token: v.string(),
     room: v.string(),
@@ -24,23 +32,17 @@ export default defineSchema({
     .index("token", ["token"])
     .index("room", ["room"]),
 
-  // Temporary tokens granting access to user operations in a room. These allow
-  // running disconnect etc without auth.
-  presenceTokens: defineTable({
+  // Temporary tokens to disconnect individual sessions.
+  sessionTokens: defineTable({
     token: v.string(),
-    user: v.string(),
-    room: v.string(),
+    sessionId: v.string(),
   })
     .index("token", ["token"])
-    .index("room_user", ["room", "user"]),
+    .index("sessionId", ["sessionId"]),
 
-  // A record of scheduled jobs that are used to disconnect users that have
-  // transitioned to offline. This is stored as a separate table so queries
-  // can subscribe to the `presence` table and not get woken up unless a user
-  // transitions to online or offline.
-  scheduledDisconnections: defineTable({
-    room: v.string(),
-    user: v.string(),
-    scheduledDisconnect: v.id("_scheduled_functions"),
-  }).index("room_user", ["room", "user"]),
+  // Scheduled jobs to disconnect sessions after timeout.
+  sessionTimeouts: defineTable({
+    sessionId: v.string(),
+    scheduledFunctionId: v.id("_scheduled_functions"),
+  }).index("sessionId", ["sessionId"]),
 });

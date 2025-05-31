@@ -2,7 +2,8 @@ import { mutation, query } from "./_generated/server";
 import { components } from "./_generated/api";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
-import { Presence } from "@convex-dev/presence";
+// TODO change to "@convex-dev/presence"
+import { Presence } from "../../src/client";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const presence = new Presence(components.presence);
@@ -15,12 +16,21 @@ export const getUserId = query({
   },
 });
 
-// TODO if a user joins a room twice they'll be marked as offline when they leave once
+// Users can now join a room from multiple tabs/sessions without being marked as offline
 
 export const heartbeat = mutation({
-  args: { room: v.string(), user: v.string(), interval: v.number() },
-  handler: async (ctx, { room, user, interval }) => {
-    console.log("sending heartbeat for room", room, "user", user, "with interval", interval);
+  args: { room: v.string(), user: v.string(), sessionId: v.string(), interval: v.number() },
+  handler: async (ctx, { room, user, sessionId, interval }) => {
+    console.log(
+      "sending heartbeat for room",
+      room,
+      "user",
+      user,
+      "session",
+      sessionId,
+      "with interval",
+      interval
+    );
 
     const userId = await getAuthUserId(ctx);
     if (userId === null || userId !== user) {
@@ -28,7 +38,7 @@ export const heartbeat = mutation({
       throw new Error("Unauthorized");
     }
 
-    return await presence.heartbeat(ctx, room, user, interval);
+    return await presence.heartbeat(ctx, room, user, sessionId, interval);
   },
 });
 

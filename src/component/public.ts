@@ -29,11 +29,11 @@ import { api } from "./_generated/api.js";
 //     }
 //     await ctx.db.delete(state._id);
 //     const scheduledDisconnect = await ctx.db
-//       .query("scheduledDisconnections")
+//       .query("sessionTimeouts")
 //       .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
 //       .unique();
 //     if (scheduledDisconnect) {
-//       await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
+//       await ctx.scheduler.cancel(scheduledDisconnect.scheduledFunctionId);
 //       await ctx.db.delete(scheduledDisconnect._id);
 //     }
 //   },
@@ -54,11 +54,11 @@ import { api } from "./_generated/api.js";
 //       await ctx.db.delete(state._id);
 //     }
 //     const scheduledDisconnects = await ctx.db
-//       .query("scheduledDisconnections")
+//       .query("sessionTimeouts")
 //       .withIndex("user", (q) => q.eq("user", user))
 //       .collect();
 //     for (const scheduledDisconnect of scheduledDisconnects) {
-//       await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
+//       await ctx.scheduler.cancel(scheduledDisconnect.scheduledFunctionId);
 //       await ctx.db.delete(scheduledDisconnect._id);
 //     }
 //   },
@@ -80,11 +80,11 @@ import { api } from "./_generated/api.js";
 //       await ctx.db.delete(state._id);
 //     }
 //     const scheduledDisconnects = await ctx.db
-//       .query("scheduledDisconnections")
+//       .query("sessionTimeouts")
 //       .withIndex("room_user", (q) => q.eq("room", room))
 //       .collect();
 //     for (const scheduledDisconnect of scheduledDisconnects) {
-//       await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
+//       await ctx.scheduler.cancel(scheduledDisconnect.scheduledFunctionId);
 //       await ctx.db.delete(scheduledDisconnect._id);
 //     }
 //   },
@@ -94,41 +94,59 @@ export const heartbeat = mutation({
   args: {
     room: v.string(),
     user: v.string(),
+    sessionId: v.string(),
     interval: v.optional(v.number()),
   },
   returns: v.object({
     roomToken: v.string(),
     presenceToken: v.string(),
   }),
-  handler: async (ctx, { room, user, interval = 10000 }) => {
-    const state = await ctx.db
+  handler: async (ctx, { room, user, sessionId, interval = 10000 }) => {
+    // Update or create session
+    const session = await ctx.db
+      .query("sessions")
+      .withIndex("room_user_session", (q) =>
+        q.eq("room", room).eq("user", user).eq("sessionId", sessionId)
+      )
+      .unique();
+
+    if (!session) {
+      await ctx.db.insert("sessions", {
+        room,
+        user,
+        sessionId,
+      });
+    }
+
+    // Update user presence - since we have at least one active session, user should be online
+    const userPresence = await ctx.db
       .query("presence")
       .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
       .unique();
 
-    if (!state) {
+    if (!userPresence) {
       await ctx.db.insert("presence", {
         room,
         user,
         online: true,
         lastDisconnected: 0,
       });
-    } else if (!state.online) {
-      await ctx.db.patch(state._id, {
+    } else if (!userPresence.online) {
+      await ctx.db.patch(userPresence._id, {
         online: true,
         lastDisconnected: 0,
       });
-    } else {
-      const scheduledDisconnect = await ctx.db
-        .query("scheduledDisconnections")
-        .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
-        .unique();
-      if (scheduledDisconnect) {
-        await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
-        await ctx.db.delete(scheduledDisconnect._id);
-      } else {
-        console.error(`Expected scheduled disconnect for online user ${user} in room ${room}`);
-      }
+    }
+
+    // Cancel any existing scheduled disconnect for this session
+    const existingScheduledDisconnect = await ctx.db
+      .query("sessionTimeouts")
+      .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
+      .unique();
+
+    if (existingScheduledDisconnect) {
+      await ctx.scheduler.cancel(existingScheduledDisconnect.scheduledFunctionId);
+      await ctx.db.delete(existingScheduledDisconnect._id);
     }
 
     // Generate tokens to list and disconnect.
@@ -143,28 +161,31 @@ export const heartbeat = mutation({
       roomToken = crypto.randomUUID();
       await ctx.db.insert("roomTokens", { room, token: roomToken });
     }
+
     let presenceToken: string;
     const presenceTokenRecord = await ctx.db
-      .query("presenceTokens")
-      .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
+      .query("sessionTokens")
+      .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
       .unique();
     if (presenceTokenRecord) {
       presenceToken = presenceTokenRecord.token;
     } else {
       presenceToken = crypto.randomUUID();
-      await ctx.db.insert("presenceTokens", { user, room, token: presenceToken });
+      await ctx.db.insert("sessionTokens", {
+        sessionId,
+        token: presenceToken,
+      });
     }
 
-    // Schedule disconnect if no heartbeat for 2.5x heartbeat period and no graceful disconnect.
+    // Schedule disconnect for this session if no heartbeat for 2.5x heartbeat period
     const scheduledDisconnect = await ctx.scheduler.runAfter(
       interval * 2.5,
       api.public.disconnect,
       { presenceToken }
     );
-    await ctx.db.insert("scheduledDisconnections", {
-      room,
-      user,
-      scheduledDisconnect,
+    await ctx.db.insert("sessionTimeouts", {
+      sessionId,
+      scheduledFunctionId: scheduledDisconnect,
     });
 
     return { roomToken, presenceToken };
@@ -222,36 +243,57 @@ export const disconnect = mutation({
   returns: v.null(),
   handler: async (ctx, { presenceToken }) => {
     const presenceTokenRecord = await ctx.db
-      .query("presenceTokens")
+      .query("sessionTokens")
       .withIndex("token", (q) => q.eq("token", presenceToken))
       .unique();
     if (!presenceTokenRecord) {
       return;
     }
     await ctx.db.delete(presenceTokenRecord._id);
-    const { room, user } = presenceTokenRecord;
+    const { sessionId } = presenceTokenRecord;
 
-    const state = await ctx.db
+    // Remove the session
+    const session = await ctx.db
+      .query("sessions")
+      .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
+      .unique();
+
+    if (!session) {
+      return;
+    }
+
+    const { room, user } = session;
+    await ctx.db.delete(session._id);
+
+    // Check if user has any remaining active sessions
+    const remainingSessions = await ctx.db
+      .query("sessions")
+      .withIndex("room_user_session", (q) => q.eq("room", room).eq("user", user))
+      .collect();
+
+    // Update user presence based on remaining sessions
+    const userPresence = await ctx.db
       .query("presence")
       .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
       .unique();
-    if (!state || !state.online) {
-      return;
-    }
-    await ctx.db.patch(state._id, {
-      online: false,
-      lastDisconnected: Date.now(),
-    });
 
+    if (userPresence && userPresence.online && remainingSessions.length === 0) {
+      // User has no more active sessions, mark them as offline
+      await ctx.db.patch(userPresence._id, {
+        online: false,
+        lastDisconnected: Date.now(),
+      });
+    }
+
+    // Cancel scheduled disconnect for this session
     const scheduledDisconnect = await ctx.db
-      .query("scheduledDisconnections")
-      .withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
+      .query("sessionTimeouts")
+      .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
       .unique();
+
     if (scheduledDisconnect) {
-      await ctx.scheduler.cancel(scheduledDisconnect.scheduledDisconnect);
+      await ctx.scheduler.cancel(scheduledDisconnect.scheduledFunctionId);
       await ctx.db.delete(scheduledDisconnect._id);
-    } else {
-      console.error(`Expected scheduled disconnect for online user ${user} in room ${room}`);
     }
   },
 });

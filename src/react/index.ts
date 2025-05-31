@@ -15,10 +15,10 @@ if (typeof window === "undefined") {
 // export const presence = new Presence(components.presence);
 //
 // export const heartbeat = mutation({
-//   args: { room: v.string(), user: v.string(), interval: v.number() },
-//   handler: async (ctx, { room, user, interval }) => {
+//   args: { room: v.string(), user: v.string(), sessionId: v.string(), interval: v.number() },
+//   handler: async (ctx, { room, user, sessionId, interval }) => {
 //     // TODO: Add your auth checks here.
-//     return await presence.heartbeat(ctx, room, user, interval);
+//     return await presence.heartbeat(ctx, room, user, sessionId, interval);
 //   },
 // });
 //
@@ -41,7 +41,7 @@ export interface PresenceAPI {
   heartbeat: FunctionReference<
     "mutation",
     "public",
-    { room: string; user: string; interval: number },
+    { room: string; user: string; sessionId: string; interval: number },
     { roomToken: string; presenceToken: string }
   >;
   disconnect: FunctionReference<"mutation", "public", { presenceToken: string }>;
@@ -57,6 +57,11 @@ export interface State {
   name?: string;
   image?: string;
 }
+
+// Generate a unique session ID for this browser tab
+const generateSessionId = () => {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+};
 
 // React hook for maintaining presence state.
 //
@@ -77,6 +82,9 @@ export default function usePresence(
   const convex = useConvex();
   const baseUrl = convexUrl ?? convex.url;
 
+  // Generate a unique session ID for this browser tab that persists for the lifetime of the component
+  const [sessionId] = useState(() => generateSessionId());
+
   const [roomToken, setRoomToken] = useState<string | null>(null);
   const roomTokenRef = useRef<string | null>(null);
   const [presenceToken, setPresenceToken] = useState<string | null>(null);
@@ -95,7 +103,7 @@ export default function usePresence(
   useEffect(() => {
     // Periodic heartbeats.
     const sendHeartbeat = async () => {
-      const result = await heartbeat({ room, user, interval });
+      const result = await heartbeat({ room, user, sessionId, interval });
       setRoomToken(result.roomToken);
       setPresenceToken(result.presenceToken);
     };
@@ -155,7 +163,7 @@ export default function usePresence(
         }
       }
     };
-  }, [heartbeat, disconnect, room, user, baseUrl, interval]);
+  }, [heartbeat, disconnect, room, user, baseUrl, interval, sessionId]);
 
   useEffect(() => {
     hasMounted.current = true;

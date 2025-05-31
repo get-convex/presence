@@ -24,8 +24,14 @@ export class Presence {
   // Keepalive heartbeat mutation. Interval is the time between heartbeats. User
   // will be disconnected if no heartbeat is received for 2.5x the interval or if
   // a graceful disconnect message is received. Returns room and presence tokens.
-  async heartbeat(ctx: RunMutationCtx, room: string, user: string, interval: number) {
-    return ctx.runMutation(this.component.public.heartbeat, { room, user, interval });
+  async heartbeat(
+    ctx: RunMutationCtx,
+    room: string,
+    user: string,
+    sessionId: string,
+    interval: number
+  ) {
+    return ctx.runMutation(this.component.public.heartbeat, { room, user, sessionId, interval });
   }
 
   // List presence state for all users in the room, up to the limit of users.
