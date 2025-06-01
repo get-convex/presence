@@ -104,8 +104,15 @@ export default function usePresence(
       setRoomToken(result.roomToken);
       setSessionToken(result.sessionToken);
     };
-    intervalRef.current = setInterval(sendHeartbeat, interval);
+
+    // Send initial heartbeat
     void sendHeartbeat();
+
+    // Clear any existing interval before setting a new one
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    intervalRef.current = setInterval(sendHeartbeat, interval);
 
     // Handle page unload.
     const handleUnload = () => {
@@ -138,6 +145,9 @@ export default function usePresence(
         }
       } else {
         void sendHeartbeat();
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
         intervalRef.current = setInterval(sendHeartbeat, interval);
       }
     };
