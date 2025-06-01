@@ -9,16 +9,16 @@ import { RunMutationCtx, RunQueryCtx, UseApi } from "./utils.js";
 export class Presence {
   constructor(private component: UseApi<typeof api>) {}
 
-  // async remove(ctx: RunMutationCtx, user: string, room: string) {
+  // async remove(ctx: RunMutationCtx, userId: string, roomId: string) {
   //   return ctx.runMutation(this.component.public.remove, { room, user });
   // }
 
-  // async removeUser(ctx: RunMutationCtx, user: string) {
-  //   return ctx.runMutation(this.component.public.removeUser, { user });
+  // async removeUser(ctx: RunMutationCtx, userId: string) {
+  //   return ctx.runMutation(this.component.public.removeUser, { userId });
   // }
 
-  // async removeRoom(ctx: RunMutationCtx, room: string) {
-  //   return ctx.runMutation(this.component.public.removeRoom, { room });
+  // async removeRoom(ctx: RunMutationCtx, roomId: string) {
+  //   return ctx.runMutation(this.component.public.removeRoom, { roomId });
   // }
 
   // Keepalive heartbeat mutation. Interval is the time between heartbeats. User

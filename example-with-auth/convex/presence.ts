@@ -37,7 +37,7 @@ export const list = query({
     const presenceList = await presence.list(ctx, roomToken);
     const listWithUserInfo = await Promise.all(
       presenceList.map(async (entry) => {
-        const user = await ctx.db.get(entry.user as Id<"users">);
+        const user = await ctx.db.get(entry.userId as Id<"users">);
         if (!user) {
           return entry;
         }

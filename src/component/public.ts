@@ -9,6 +9,12 @@ import { mutation, query } from "./_generated/server.js";
 import { api } from "./_generated/api.js";
 
 // TODO: reinstate all the user management functions
+// - list rooms for user
+// - list rooms
+// - remove user from room
+// - remove room
+// - remove user
+
 // TODO: rotate the room tokens
 
 // // Remove the user from the room.
@@ -176,7 +182,7 @@ export const list = query({
   },
   returns: v.array(
     v.object({
-      user: v.string(),
+      userId: v.string(),
       online: v.boolean(),
       lastDisconnected: v.number(),
     })
@@ -206,7 +212,7 @@ export const list = query({
       .take(limit - online.length);
     const results = [...online, ...offline];
     return results.map(({ userId, online, lastDisconnected }) => ({
-      user: userId,
+      userId,
       online,
       lastDisconnected,
     }));

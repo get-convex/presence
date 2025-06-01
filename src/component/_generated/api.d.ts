@@ -45,7 +45,7 @@ export type Mounts = {
       "query",
       "public",
       { limit?: number; roomToken: string },
-      Array<{ lastDisconnected: number; online: boolean; user: string }>
+      Array<{ lastDisconnected: number; online: boolean; userId: string }>
     >;
   };
 };
