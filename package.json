@@ -16,9 +16,10 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "npm run build:esm && npm run build:cjs",
+    "build": "npm run build:esm && npm run build:cjs && npm run copy:css",
     "build:esm": "tsc --project ./esm.json && printf '{\\n  \"type\": \"module\"\\n}' > dist/esm/package.json",
     "build:cjs": "tsc --project ./commonjs.json && printf '{\\n  \"type\": \"commonjs\"\\n}' > dist/commonjs/package.json",
+    "copy:css": "cp src/facepile/facepile.css dist/esm/facepile/ && cp src/facepile/facepile.css dist/commonjs/facepile/",
     "typecheck": "tsc --noEmit",
     "prepare": "npm run build",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\""
@@ -72,6 +73,10 @@
         "types": "./dist/esm/component/convex.config.d.ts",
         "default": "./dist/esm/component/convex.config.js"
       }
+    },
+    "./facepile.css": {
+      "import": "./dist/esm/facepile/facepile.css",
+      "require": "./dist/commonjs/facepile/facepile.css"
     }
   },
   "peerDependencies": {
