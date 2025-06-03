@@ -68,6 +68,18 @@ export declare const components: {
         { limit?: number; roomToken: string },
         Array<{ lastDisconnected: number; online: boolean; userId: string }>
       >;
+      removeRoom: FunctionReference<
+        "mutation",
+        "internal",
+        { roomId: string },
+        null
+      >;
+      removeRoomUser: FunctionReference<
+        "mutation",
+        "internal",
+        { roomId: string; userId: string },
+        null
+      >;
     };
   };
 };

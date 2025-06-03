@@ -9,18 +9,6 @@ import { RunMutationCtx, RunQueryCtx, UseApi } from "./utils.js";
 export class Presence {
   constructor(private component: UseApi<typeof api>) {}
 
-  // async remove(ctx: RunMutationCtx, userId: string, roomId: string) {
-  //   return ctx.runMutation(this.component.public.remove, { room, user });
-  // }
-
-  // async removeUser(ctx: RunMutationCtx, userId: string) {
-  //   return ctx.runMutation(this.component.public.removeUser, { userId });
-  // }
-
-  // async removeRoom(ctx: RunMutationCtx, roomId: string) {
-  //   return ctx.runMutation(this.component.public.removeRoom, { roomId });
-  // }
-
   // Keepalive heartbeat mutation. Interval is the time between heartbeats. User
   // will be disconnected if no heartbeat is received for 2.5x the interval or if
   // a graceful disconnect message is received. Returns room and session tokens.
@@ -47,5 +35,16 @@ export class Presence {
   // Gracefully disconnect a user.
   async disconnect(ctx: RunMutationCtx, sessionToken: string) {
     return ctx.runMutation(this.component.public.disconnect, { sessionToken });
+  }
+
+  // Remove a user from a room. If you need to track which rooms a user is in
+  // you can store this in your calling application.
+  async removeRoomUser(ctx: RunMutationCtx, roomId: string, userId: string) {
+    return ctx.runMutation(this.component.public.removeRoomUser, { roomId, userId });
+  }
+
+  // Remove a room.
+  async removeRoom(ctx: RunMutationCtx, roomId: string) {
+    return ctx.runMutation(this.component.public.removeRoom, { roomId });
   }
 }

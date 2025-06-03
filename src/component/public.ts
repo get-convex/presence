@@ -8,93 +8,6 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server.js";
 import { api } from "./_generated/api.js";
 
-// TODO: reinstate all the user management functions
-// - list rooms for user
-// - list rooms
-// - remove user from room
-// - remove room
-// - remove user
-
-// TODO: rotate the room tokens
-
-// // Remove the user from the room.
-// // This typically shouldn't be exposed to end users
-// export const remove = mutation({
-//   args: {
-//     roomId: v.string(),
-//     userId: v.string(),
-//   },
-//   handler: async (ctx, { roomId, userId }) => {
-//     const state = await ctx.db
-//       .query("presence")
-//       .withIndex("room_user", (q) => q.eq("roomId", roomId).eq("userId", userId))
-//       .unique();
-//     if (!state) {
-//       throw new ConvexError("User not in room");
-//     }
-//     await ctx.db.delete(state._id);
-//     const scheduledDisconnect = await ctx.db
-//       .query("sessionTimeouts")
-//       .withIndex("room_user", (q) => q.eq("roomId", roomId).eq("userId", userId))
-//       .unique();
-//     if (scheduledDisconnect) {
-//       await ctx.scheduler.cancel(scheduledDisconnect.scheduledFunctionId);
-//       await ctx.db.delete(scheduledDisconnect._id);
-//     }
-//   },
-// });
-
-// // Remove user from all rooms.
-// // TODO invalidate tokens
-// export const removeUser = mutation({
-//   args: {
-//     userId: v.string(),
-//   },
-//   handler: async (ctx, { userId }) => {
-//     const states = await ctx.db
-//       .query("presence")
-//       .withIndex("user", (q) => q.eq("userId", userId))
-//       .collect();
-//     for (const state of states) {
-//       await ctx.db.delete(state._id);
-//     }
-//     const scheduledDisconnects = await ctx.db
-//       .query("sessionTimeouts")
-//       .withIndex("user", (q) => q.eq("userId", userId))
-//       .collect();
-//     for (const scheduledDisconnect of scheduledDisconnects) {
-//       await ctx.scheduler.cancel(scheduledDisconnect.scheduledFunctionId);
-//       await ctx.db.delete(scheduledDisconnect._id);
-//     }
-//   },
-// });
-
-// // Remove room.
-// // TODO invalidate tokens
-// export const removeRoom = mutation({
-//   args: {
-//     roomId: v.string(),
-//   },
-//   handler: async (ctx, { roomId }) => {
-//     // TODO paginate
-//     const states = await ctx.db
-//       .query("presence")
-//       .withIndex("room_user", (q) => q.eq("roomId", roomId))
-//       .collect();
-//     for (const state of states) {
-//       await ctx.db.delete(state._id);
-//     }
-//     const scheduledDisconnects = await ctx.db
-//       .query("sessionTimeouts")
-//       .withIndex("room_user", (q) => q.eq("roomId", roomId))
-//       .collect();
-//     for (const scheduledDisconnect of scheduledDisconnects) {
-//       await ctx.scheduler.cancel(scheduledDisconnect.scheduledFunctionId);
-//       await ctx.db.delete(scheduledDisconnect._id);
-//     }
-//   },
-// });
-
 export const heartbeat = mutation({
   args: {
     roomId: v.string(),
@@ -277,3 +190,99 @@ export const disconnect = mutation({
     }
   },
 });
+
+export const removeRoomUser = mutation({
+  args: {
+    roomId: v.string(),
+    userId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { roomId, userId }) => {
+    const state = await ctx.db
+      .query("presence")
+      .withIndex("room_user", (q) => q.eq("roomId", roomId).eq("userId", userId))
+      .unique();
+    if (!state) {
+      console.warn("User not in room", roomId, userId);
+      return null;
+    }
+    await ctx.db.delete(state._id);
+
+    // Remove the user from all sessions.
+    const sessions = await ctx.db
+      .query("sessions")
+      .withIndex("room_user_session", (q) => q.eq("roomId", roomId).eq("userId", userId))
+      .collect();
+    for (const session of sessions) {
+      await ctx.db.delete(session._id);
+      const sessionToken = await ctx.db
+        .query("sessionTokens")
+        .withIndex("sessionId", (q) => q.eq("sessionId", session.sessionId))
+        .unique();
+      if (sessionToken) {
+        await ctx.db.delete(sessionToken._id);
+      }
+      const timeout = await ctx.db
+        .query("sessionTimeouts")
+        .withIndex("sessionId", (q) => q.eq("sessionId", session.sessionId))
+        .unique();
+      if (timeout) {
+        await ctx.scheduler.cancel(timeout.scheduledFunctionId);
+        await ctx.db.delete(timeout._id);
+      }
+    }
+    return null;
+  },
+});
+
+// TODO: this could hit limits and should return a continuation token
+export const removeRoom = mutation({
+  args: {
+    roomId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { roomId }) => {
+    const presenceRecords = await ctx.db
+      .query("presence")
+      .withIndex("room_user", (q) => q.eq("roomId", roomId))
+      .collect();
+    for (const presence of presenceRecords) {
+      await ctx.db.delete(presence._id);
+    }
+
+    const sessions = await ctx.db
+      .query("sessions")
+      .withIndex("room_user_session", (q) => q.eq("roomId", roomId))
+      .collect();
+    for (const session of sessions) {
+      await ctx.db.delete(session._id);
+
+      const sessionToken = await ctx.db
+        .query("sessionTokens")
+        .withIndex("sessionId", (q) => q.eq("sessionId", session.sessionId))
+        .unique();
+      if (sessionToken) {
+        await ctx.db.delete(sessionToken._id);
+      }
+
+      const timeout = await ctx.db
+        .query("sessionTimeouts")
+        .withIndex("sessionId", (q) => q.eq("sessionId", session.sessionId))
+        .unique();
+      if (timeout) {
+        await ctx.scheduler.cancel(timeout.scheduledFunctionId);
+        await ctx.db.delete(timeout._id);
+      }
+    }
+
+    const roomToken = await ctx.db
+      .query("roomTokens")
+      .withIndex("room", (q) => q.eq("roomId", roomId))
+      .unique();
+    if (roomToken) {
+      await ctx.db.delete(roomToken._id);
+    }
+  },
+});
+
+// TODO: rotate the room tokens

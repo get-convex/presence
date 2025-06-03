@@ -47,6 +47,18 @@ export type Mounts = {
       { limit?: number; roomToken: string },
       Array<{ lastDisconnected: number; online: boolean; userId: string }>
     >;
+    removeRoom: FunctionReference<
+      "mutation",
+      "public",
+      { roomId: string },
+      null
+    >;
+    removeRoomUser: FunctionReference<
+      "mutation",
+      "public",
+      { roomId: string; userId: string },
+      null
+    >;
   };
 };
 // For now fullApiWithMounts is only fullApi which provides
