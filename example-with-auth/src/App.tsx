@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { api } from "../convex/_generated/api";
 import usePresence from "@convex-dev/presence/react";
 import FacePile from "@convex-dev/presence/facepile";
