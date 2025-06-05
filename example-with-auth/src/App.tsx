@@ -14,10 +14,8 @@ export default function App(): React.ReactElement {
         <SignIn />
       </Unauthenticated>
       <Authenticated>
-        <div>
-          <SignOut />
-        </div>
-        <div>
+        <SignOut />
+        <div style={{ padding: "20px" }}>
           <Content />
         </div>
       </Authenticated>
