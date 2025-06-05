@@ -181,7 +181,7 @@ export default function usePresence(
     hasMounted.current = true;
   }, []);
 
-  const state = useQuery(presence.list, { roomToken: roomTokenRef.current ?? "" });
+  const state = useQuery(presence.list, roomToken ? { roomToken } : "skip");
   return useMemo(
     () =>
       state?.slice().sort((a, b) => {
