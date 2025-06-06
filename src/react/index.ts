@@ -76,12 +76,7 @@ export default function usePresence(
 ): PresenceState[] | undefined {
   const hasMounted = useRef(false);
   const convex = useConvex();
-
-  // TODO: check if this is only possible when misconfigured
-  const baseUrl = convexUrl ?? convex?.url;
-  if (!baseUrl) {
-    console.warn("usePresence: Convex client not available, disconnect beacons will not be sent");
-  }
+  const baseUrl = convexUrl ?? convex.url;
 
   // Each session (browser tab etc) has a unique ID and a token used to disconnect it.
   const [sessionId] = useState(() => crypto.randomUUID());
@@ -121,7 +116,7 @@ export default function usePresence(
 
     // Handle page unload.
     const handleUnload = () => {
-      if (sessionTokenRef.current && baseUrl) {
+      if (sessionTokenRef.current) {
         const blob = new Blob(
           [
             JSON.stringify({
