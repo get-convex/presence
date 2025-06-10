@@ -5,10 +5,6 @@ import { useQuery, useMutation, useConvex } from "convex/react";
 import { FunctionReference } from "convex/server";
 import useSingleFlight from "./useSingleFlight.js";
 
-if (typeof window === "undefined") {
-  throw new Error("this is frontend code, but it's running somewhere else!");
-}
-
 // Interface in your Convex app /convex directory that implements these
 // functions by calling into the presence component, e.g., like this:
 //
