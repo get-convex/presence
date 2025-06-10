@@ -23,12 +23,12 @@ export const heartbeat = mutation({
     // Update or create session
     const session = await ctx.db
       .query("sessions")
-      .withIndex("room_user_session", (q) =>
-        q.eq("roomId", roomId).eq("userId", userId).eq("sessionId", sessionId)
-      )
+      .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
       .unique();
     if (!session) {
       await ctx.db.insert("sessions", { roomId, userId, sessionId });
+    } else if (session.roomId !== roomId || session.userId !== userId) {
+      throw new Error(`sessionId ${sessionId} must be unique for a given room/user`);
     }
 
     // Set user online if needed.

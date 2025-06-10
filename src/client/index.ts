@@ -9,9 +9,10 @@ import { RunMutationCtx, RunQueryCtx, UseApi } from "./utils.js";
 export class Presence {
   constructor(private component: UseApi<typeof api>) {}
 
-  // Keepalive heartbeat mutation. Interval is the time between heartbeats. User
-  // will be disconnected if no heartbeat is received for 2.5x the interval or if
-  // a graceful disconnect message is received. Returns room and session tokens.
+  // Keepalive heartbeat mutation. Session ID must be unique for a given room/user.
+  // Interval is the time between heartbeats. User will be disconnected if no
+  // heartbeat is received for 2.5x the interval or if a graceful disconnect
+  // message is received. Returns room and session tokens.
   async heartbeat(
     ctx: RunMutationCtx,
     roomId: string,
