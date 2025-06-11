@@ -132,6 +132,7 @@ export const list = query({
 export const listRoom = query({
   args: {
     roomId: v.string(),
+    onlineOnly: v.optional(v.boolean()),
     limit: v.optional(v.number()),
   },
   returns: v.array(
@@ -141,16 +142,18 @@ export const listRoom = query({
       lastDisconnected: v.number(),
     })
   ),
-  handler: async (ctx, { roomId, limit = 104 }) => {
+  handler: async (ctx, { roomId, onlineOnly = false, limit = 104 }) => {
     const online = await ctx.db
       .query("presence")
       .withIndex("room_order", (q) => q.eq("roomId", roomId).eq("online", true))
       .take(limit);
-    const offline = await ctx.db
-      .query("presence")
-      .withIndex("room_order", (q) => q.eq("roomId", roomId).eq("online", false))
-      .order("desc")
-      .take(limit - online.length);
+    const offline = onlineOnly
+      ? []
+      : await ctx.db
+          .query("presence")
+          .withIndex("room_order", (q) => q.eq("roomId", roomId).eq("online", false))
+          .order("desc")
+          .take(limit - online.length);
     const results = [...online, ...offline];
     return results.map(({ userId, online, lastDisconnected }) => ({
       userId,
@@ -160,24 +163,10 @@ export const listRoom = query({
   },
 });
 
-export const listRoomOnline = query({
-  args: {
-    roomId: v.string(),
-    limit: v.optional(v.number()),
-  },
-  returns: v.array(v.string()),
-  handler: async (ctx, { roomId, limit = 104 }) => {
-    const online = await ctx.db
-      .query("presence")
-      .withIndex("room_order", (q) => q.eq("roomId", roomId).eq("online", true))
-      .take(limit);
-    return online.map(({ userId }) => userId);
-  },
-});
-
 export const listUser = query({
   args: {
     userId: v.string(),
+    onlineOnly: v.optional(v.boolean()),
     limit: v.optional(v.number()),
   },
   returns: v.array(
@@ -187,37 +176,24 @@ export const listUser = query({
       lastDisconnected: v.number(),
     })
   ),
-  handler: async (ctx, { userId, limit = 104 }) => {
+  handler: async (ctx, { userId, onlineOnly = false, limit = 104 }) => {
     const online = await ctx.db
       .query("presence")
       .withIndex("user_online_room", (q) => q.eq("userId", userId).eq("online", true))
       .take(limit);
-    const offline = await ctx.db
-      .query("presence")
-      .withIndex("user_online_room", (q) => q.eq("userId", userId).eq("online", false))
-      .order("desc")
-      .take(limit - online.length);
+    const offline = onlineOnly
+      ? []
+      : await ctx.db
+          .query("presence")
+          .withIndex("user_online_room", (q) => q.eq("userId", userId).eq("online", false))
+          .order("desc")
+          .take(limit - online.length);
     const results = [...online, ...offline];
     return results.map(({ roomId, online, lastDisconnected }) => ({
       roomId,
       online,
       lastDisconnected,
     }));
-  },
-});
-
-export const listUserOnline = query({
-  args: {
-    userId: v.string(),
-    limit: v.optional(v.number()),
-  },
-  returns: v.array(v.string()),
-  handler: async (ctx, { userId, limit = 104 }) => {
-    const online = await ctx.db
-      .query("presence")
-      .withIndex("user_online_room", (q) => q.eq("userId", userId).eq("online", true))
-      .take(limit);
-    return online.map(({ roomId }) => roomId);
   },
 });
 

@@ -80,23 +80,11 @@ export class Presence<RoomId extends string = string, UserId extends string = st
   async listRoom(
     ctx: RunQueryCtx,
     roomId: RoomId,
+    onlineOnly: boolean = false, // only show users online in the room
     limit: number = 104
   ): Promise<Array<{ userId: UserId; online: boolean; lastDisconnected: number }>> {
-    return ctx.runQuery(this.component.public.listRoom, { roomId, limit }) as Promise<
+    return ctx.runQuery(this.component.public.listRoom, { roomId, onlineOnly, limit }) as Promise<
       { userId: UserId; online: boolean; lastDisconnected: number }[]
-    >;
-  }
-
-  /**
-   * List all online users in a room.
-   */
-  async listRoomOnline(
-    ctx: RunQueryCtx,
-    roomId: RoomId,
-    limit: number = 104
-  ): Promise<Array<UserId>> {
-    return ctx.runQuery(this.component.public.listRoomOnline, { roomId, limit }) as Promise<
-      UserId[]
     >;
   }
 
@@ -106,23 +94,11 @@ export class Presence<RoomId extends string = string, UserId extends string = st
   async listUser(
     ctx: RunQueryCtx,
     userId: UserId,
+    onlineOnly: boolean = false, // only show rooms the user is online in
     limit: number = 104
   ): Promise<Array<{ roomId: RoomId; online: boolean; lastDisconnected: number }>> {
-    return ctx.runQuery(this.component.public.listUser, { userId, limit }) as Promise<
+    return ctx.runQuery(this.component.public.listUser, { userId, onlineOnly, limit }) as Promise<
       { roomId: RoomId; online: boolean; lastDisconnected: number }[]
-    >;
-  }
-
-  /**
-   * List all rooms a user is online in.
-   */
-  async listUserOnline(
-    ctx: RunQueryCtx,
-    userId: UserId,
-    limit: number = 104
-  ): Promise<Array<RoomId>> {
-    return ctx.runQuery(this.component.public.listUserOnline, { userId, limit }) as Promise<
-      RoomId[]
     >;
   }
 
