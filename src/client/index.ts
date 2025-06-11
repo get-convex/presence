@@ -42,6 +42,13 @@ export class Presence<RoomId extends string = string, UserId extends string = st
     >;
   }
 
+  /** List presence state for all rooms a user is in, up to the limit of rooms. */
+  async listUser(ctx: RunQueryCtx, userId: UserId, limit: number = 104) {
+    return ctx.runQuery(this.component.public.listUser, { userId, limit }) as Promise<
+      { roomId: RoomId }[]
+    >;
+  }
+
   /** Gracefully disconnect a user. */
   async disconnect(ctx: RunMutationCtx, sessionToken: string) {
     return ctx.runMutation(this.component.public.disconnect, { sessionToken });
