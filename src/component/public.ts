@@ -85,23 +85,6 @@ export const heartbeat = mutation({
   },
 });
 
-async function getUserPresence(ctx: QueryCtx, userId: string, roomId: string) {
-  return (
-    (await ctx.db
-      .query("presence")
-      .withIndex("user_online_room", (q) =>
-        q.eq("userId", userId).eq("online", true).eq("roomId", roomId)
-      )
-      .unique()) ||
-    (await ctx.db
-      .query("presence")
-      .withIndex("user_online_room", (q) =>
-        q.eq("userId", userId).eq("online", false).eq("roomId", roomId)
-      )
-      .unique())
-  );
-}
-
 export const list = query({
   args: {
     roomToken: v.string(),
@@ -384,5 +367,22 @@ export const removeRoom = mutation({
     }
   },
 });
+
+async function getUserPresence(ctx: QueryCtx, userId: string, roomId: string) {
+  return (
+    (await ctx.db
+      .query("presence")
+      .withIndex("user_online_room", (q) =>
+        q.eq("userId", userId).eq("online", true).eq("roomId", roomId)
+      )
+      .unique()) ||
+    (await ctx.db
+      .query("presence")
+      .withIndex("user_online_room", (q) =>
+        q.eq("userId", userId).eq("online", false).eq("roomId", roomId)
+      )
+      .unique())
+  );
+}
 
 // TODO: rotate the room tokens
