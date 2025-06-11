@@ -9,7 +9,7 @@ export default defineSchema({
     online: v.boolean(), // Whether any user session is online.
     lastDisconnected: v.number(), // Timestamp of last disconnect.
   })
-    .index("room_user", ["roomId", "userId"])
+    .index("user_online_room", ["userId", "online", "roomId"])
     .index("room_order", ["roomId", "online", "lastDisconnected"]),
 
   // Individual sessions for each browser tab/connection.
