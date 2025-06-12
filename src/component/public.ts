@@ -5,7 +5,7 @@
 // can be used in Convex server functions.
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server.js";
+import { mutation, query, QueryCtx } from "./_generated/server.js";
 import { api } from "./_generated/api.js";
 
 export const heartbeat = mutation({
@@ -32,10 +32,7 @@ export const heartbeat = mutation({
     }
 
     // Set user online if needed.
-    const userPresence = await ctx.db
-      .query("presence")
-      .withIndex("room_user", (q) => q.eq("roomId", roomId).eq("userId", userId))
-      .unique();
+    const userPresence = await getUserPresence(ctx, userId, roomId);
     if (!userPresence) {
       await ctx.db.insert("presence", { roomId, userId, online: true, lastDisconnected: 0 });
     } else if (!userPresence.online) {
@@ -132,6 +129,74 @@ export const list = query({
   },
 });
 
+export const listRoom = query({
+  args: {
+    roomId: v.string(),
+    onlineOnly: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      userId: v.string(),
+      online: v.boolean(),
+      lastDisconnected: v.number(),
+    })
+  ),
+  handler: async (ctx, { roomId, onlineOnly = false, limit = 104 }) => {
+    const online = await ctx.db
+      .query("presence")
+      .withIndex("room_order", (q) => q.eq("roomId", roomId).eq("online", true))
+      .take(limit);
+    const offline = onlineOnly
+      ? []
+      : await ctx.db
+          .query("presence")
+          .withIndex("room_order", (q) => q.eq("roomId", roomId).eq("online", false))
+          .order("desc")
+          .take(limit - online.length);
+    const results = [...online, ...offline];
+    return results.map(({ userId, online, lastDisconnected }) => ({
+      userId,
+      online,
+      lastDisconnected,
+    }));
+  },
+});
+
+export const listUser = query({
+  args: {
+    userId: v.string(),
+    onlineOnly: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      roomId: v.string(),
+      online: v.boolean(),
+      lastDisconnected: v.number(),
+    })
+  ),
+  handler: async (ctx, { userId, onlineOnly = false, limit = 104 }) => {
+    const online = await ctx.db
+      .query("presence")
+      .withIndex("user_online_room", (q) => q.eq("userId", userId).eq("online", true))
+      .take(limit);
+    const offline = onlineOnly
+      ? []
+      : await ctx.db
+          .query("presence")
+          .withIndex("user_online_room", (q) => q.eq("userId", userId).eq("online", false))
+          .order("desc")
+          .take(limit - online.length);
+    const results = [...online, ...offline];
+    return results.map(({ roomId, online, lastDisconnected }) => ({
+      roomId,
+      online,
+      lastDisconnected,
+    }));
+  },
+});
+
 export const disconnect = mutation({
   args: {
     sessionToken: v.string(),
@@ -161,10 +226,7 @@ export const disconnect = mutation({
     const { roomId, userId } = session;
     await ctx.db.delete(session._id);
 
-    const userPresence = await ctx.db
-      .query("presence")
-      .withIndex("room_user", (q) => q.eq("roomId", roomId).eq("userId", userId))
-      .unique();
+    const userPresence = await getUserPresence(ctx, userId, roomId);
     if (!userPresence) {
       console.error("Should not have a session token", sessionToken, "without a user presence");
       return;
@@ -198,15 +260,12 @@ export const removeRoomUser = mutation({
   },
   returns: v.null(),
   handler: async (ctx, { roomId, userId }) => {
-    const state = await ctx.db
-      .query("presence")
-      .withIndex("room_user", (q) => q.eq("roomId", roomId).eq("userId", userId))
-      .unique();
-    if (!state) {
+    const userPresence = await getUserPresence(ctx, userId, roomId);
+    if (!userPresence) {
       console.warn("User not in room", roomId, userId);
       return null;
     }
-    await ctx.db.delete(state._id);
+    await ctx.db.delete(userPresence._id);
 
     // Remove the user from all sessions.
     const sessions = await ctx.db
@@ -244,7 +303,7 @@ export const removeRoom = mutation({
   handler: async (ctx, { roomId }) => {
     const presenceRecords = await ctx.db
       .query("presence")
-      .withIndex("room_user", (q) => q.eq("roomId", roomId))
+      .withIndex("room_order", (q) => q.eq("roomId", roomId))
       .collect();
     for (const presence of presenceRecords) {
       await ctx.db.delete(presence._id);
@@ -284,5 +343,22 @@ export const removeRoom = mutation({
     }
   },
 });
+
+async function getUserPresence(ctx: QueryCtx, userId: string, roomId: string) {
+  return (
+    (await ctx.db
+      .query("presence")
+      .withIndex("user_online_room", (q) =>
+        q.eq("userId", userId).eq("online", true).eq("roomId", roomId)
+      )
+      .unique()) ||
+    (await ctx.db
+      .query("presence")
+      .withIndex("user_online_room", (q) =>
+        q.eq("userId", userId).eq("online", false).eq("roomId", roomId)
+      )
+      .unique())
+  );
+}
 
 // TODO: rotate the room tokens
