@@ -5,7 +5,7 @@
 A Convex component for managing presence functionality, i.e., a live-updating
 list of users in a "room" including their status for when they were last online.
 
-![Demo of presence component](./presence.gif)
+![Demo of presence component](https://raw.githubusercontent.com/get-convex/presence/main/presence.gif)
 
 It can be tricky to implement presence efficiently, without any polling and
 without re-running queries every time a user sends a heartbeat message. This
