@@ -5,6 +5,8 @@
 A Convex component for managing presence functionality, i.e., a live-updating
 list of users in a "room" including their status for when they were last online.
 
+![Demo of presence component](./presence.gif)
+
 It can be tricky to implement presence efficiently, without any polling and
 without re-running queries every time a user sends a heartbeat message. This
 component implements presence via Convex scheduled functions such that clients
@@ -14,14 +16,17 @@ The most common use case for this component is via the usePresence hook, which
 takes care of sending heartbeart messages to the server and gracefully
 disconnecting a user when the tab is closed.
 
-See `example` for an example of how to incorporate this hook into your
-application.
-
 ## Installation
 
 ```bash
 npm install @convex-dev/presence
 ```
+
+## Examples
+
+See the `example` directory for a simple example of how to use this component. The `example-with-auth` directory shows how to use the component with authentication.
+
+There's a hosted version of `example-with-auth` at https://presence.previews.convex.dev.
 
 ## Usage
 
@@ -97,3 +102,13 @@ export default function App(): React.ReactElement {
 This uses the basic `FacePile` component included with this package but you can
 easily copy this code and use the `usePresence` hook directly to implement your
 own styling.
+
+## Additional functionality
+
+The component interface for the `Presence` class is defined in
+`src/client/index.ts`. It includes additional functions for maintaining presence
+state and for querying presence for a given user or room.
+
+e.g., you can use the `listUser` function to check if a user is online in any room.
+
+Reach out or join the [Convex Discord Community](https://convex.dev/community) if you have any questions or feedback!
