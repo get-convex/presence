@@ -9,6 +9,8 @@ export default function App(): React.ReactElement {
 
   return (
     <main>
+      <h1>Convex Presence Example</h1>
+      <p>my-chat-room, {name}</p>
       <FacePile presenceState={presenceState ?? []} />
     </main>
   );

@@ -75,7 +75,7 @@ export default function usePresence(
   const baseUrl = convexUrl ?? convex.url;
 
   // Each session (browser tab etc) has a unique ID and a token used to disconnect it.
-  const [sessionId] = useState(() => crypto.randomUUID());
+  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const sessionTokenRef = useRef<string | null>(null);
 
@@ -86,6 +86,20 @@ export default function usePresence(
 
   const heartbeat = useSingleFlight(useMutation(presence.heartbeat));
   const disconnect = useSingleFlight(useMutation(presence.disconnect));
+
+  useEffect(() => {
+    // Reset session state when roomId or userId changes.
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (sessionTokenRef.current) {
+      void disconnect({ sessionToken: sessionTokenRef.current });
+    }
+    setSessionId(crypto.randomUUID());
+    setSessionToken(null);
+    setRoomToken(null);
+  }, [roomId, userId, disconnect]);
 
   useEffect(() => {
     // Update refs whenever tokens change.
