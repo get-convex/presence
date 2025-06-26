@@ -16,6 +16,8 @@ The most common use case for this component is via the usePresence hook, which
 takes care of sending heartbeart messages to the server and gracefully
 disconnecting a user when the tab is closed.
 
+[![The Presence Component Video](https://img.youtube.com/vi/ZZTm_NtWJrs/0.jpg)](https://www.youtube.com/watch?v=ZZTm_NtWJrs)
+
 ## Installation
 
 ```bash
