@@ -45,7 +45,12 @@ export type Mounts = {
       "query",
       "public",
       { limit?: number; roomToken: string },
-      Array<{ lastDisconnected: number; online: boolean; userId: string }>
+      Array<{
+        data?: any;
+        lastDisconnected: number;
+        online: boolean;
+        userId: string;
+      }>
     >;
     listRoom: FunctionReference<
       "query",
@@ -69,6 +74,12 @@ export type Mounts = {
       "mutation",
       "public",
       { roomId: string; userId: string },
+      null
+    >;
+    updateRoomUser: FunctionReference<
+      "mutation",
+      "public",
+      { data?: any; roomId: string; userId: string },
       null
     >;
   };

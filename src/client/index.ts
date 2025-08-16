@@ -53,10 +53,22 @@ export class Presence<RoomId extends string = string, UserId extends string = st
     ctx: RunQueryCtx,
     roomToken: string,
     limit: number = 104
-  ): Promise<Array<{ userId: UserId; online: boolean; lastDisconnected: number }>> {
+  ): Promise<Array<{ userId: UserId; online: boolean; lastDisconnected: number, data?: unknown }>> {
     return ctx.runQuery(this.component.public.list, { roomToken, limit }) as Promise<
-      { userId: UserId; online: boolean; lastDisconnected: number }[]
+      { userId: UserId; online: boolean; lastDisconnected: number, data?: unknown }[]
     >;
+  }
+
+  /**
+   * Updates a users presence data in a room.
+   */
+  async updateRoomUser(
+    ctx: RunMutationCtx,
+    roomId: RoomId,
+    userId: UserId,
+    data?: unknown
+  ): Promise<null> {
+    return ctx.runMutation(this.component.public.updateRoomUser, { roomId, userId, data });
   }
 
   // Gracefully disconnect a user.

@@ -49,6 +49,7 @@ export interface PresenceState {
   userId: string;
   online: boolean;
   lastDisconnected: number;
+  data?: unknown;
   // Set these accordingly in your Convex app.
   // See ../../example-with-auth/convex/presence.ts for an example.
   name?: string;

@@ -31,3 +31,12 @@ export const disconnect = mutation({
     return await presence.disconnect(ctx, sessionToken);
   },
 });
+
+export const updateRoomUser = mutation({
+  args: { roomId: v.string(), userId: v.string(), data: v.any() },
+  handler: async (ctx, { roomId, userId, data }) => {
+    // TODO: Add your auth checks here.
+    console.log("updateRoomUser", roomId, userId, data);
+    return await presence.updateRoomUser(ctx, roomId, userId, data);
+  }
+})

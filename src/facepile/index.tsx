@@ -33,6 +33,18 @@ export default function FacePile({
   );
 }
 
+function getEmojiForUserId(userId: string): string {
+  // Simple hash function to generate a consistent emoji for a user ID.
+  // see https://stackoverflow.com/a/7616484
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash << 5) - hash + userId.charCodeAt(i);
+    hash |= 0; // Constrain to 32bit integer
+  }
+  const emojis = ["😊", "😃", "😎", "🤓", "😇", "🤖", "👻", "🐶", "🐱", "🐰"];
+  return emojis[Math.abs(hash) % emojis.length];
+}
+
 function getTimeAgo(timestamp: number): string {
   const now = Date.now();
   const diff = Math.floor((now - timestamp) / 1000);
@@ -56,20 +68,37 @@ function Avatar({
   index: number;
   total: number;
 }) {
+  const presenceData = Object.entries(presence.data ?? {}).reduce((acc, [key, value]) => {
+    acc[`data-presence-${key}`] = String(value);
+    return acc;
+  }, {} as Record<`data-presence-${string}`, string>);
+
   return (
     <div
       className={`avatar${presence.online ? " online" : " offline"}`}
       tabIndex={0}
       style={{ "--z": total - index } as React.CSSProperties}
+      {...presenceData}
     >
       <span role="img" aria-label="user">
-        {presence.image ? <img src={presence.image} alt="user" /> : "😊"}
+        {presence.image ? <img src={presence.image} alt="user" /> : getEmojiForUserId(presence.userId)}
       </span>
       <span className="tooltip">
         <div className="tooltip-user">{presence.name || presence.userId}</div>
         <div className="tooltip-status">
           {presence.online ? "Online now" : getTimeAgo(presence.lastDisconnected)}
         </div>
+
+        {!!presence.data && (
+          <div className="tooltip-data">
+            <hr />
+            {Object.entries(presence.data).map(([key, value]) => (
+              <div key={key}>
+                <strong>{key}:</strong> {String(value)}
+              </div>
+            ))}
+          </div>
+        )}
       </span>
     </div>
   );
@@ -82,7 +111,7 @@ function Dropdown({ users }: { users: PresenceState[] }) {
         <div key={presence.userId} className="dropdown-row">
           <div className={`dropdown-emoji${!presence.online ? " offline" : ""}`}>
             <span role="img" aria-label="user">
-              {presence.image ? <img src={presence.image} alt="user" /> : "😊"}
+              {presence.image ? <img src={presence.image} alt="user" /> : getEmojiForUserId(presence.userId)}
             </span>
           </div>
           <div className="dropdown-info">
