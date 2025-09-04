@@ -18,7 +18,8 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "typeRoots": ["./types", "./node_modules/@types"]
   },
   "include": ["./src/**/*"]
 }
