@@ -7,6 +7,7 @@
 import { v } from "convex/values";
 import { mutation, query, QueryCtx } from "./_generated/server.js";
 import { api } from "./_generated/api.js";
+import { Id } from "./_generated/dataModel.js";
 
 export const heartbeat = mutation({
   args: {
@@ -150,16 +151,80 @@ export const listRoom = query({
     const offline = onlineOnly
       ? []
       : await ctx.db
-          .query("presence")
-          .withIndex("room_order", (q) => q.eq("roomId", roomId).eq("online", false))
-          .order("desc")
-          .take(limit - online.length);
+        .query("presence")
+        .withIndex("room_order", (q) => q.eq("roomId", roomId).eq("online", false))
+        .order("desc")
+        .take(limit - online.length);
     const results = [...online, ...offline];
     return results.map(({ userId, online, lastDisconnected }) => ({
       userId,
       online,
       lastDisconnected,
     }));
+  },
+});
+
+export const listAllUsers = query({
+  args: {
+    onlineOnly: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+    limitRooms: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      userId: v.string(),
+      rooms: v.array(v.object({
+        online: v.boolean(),
+        lastDisconnected: v.number(),
+        roomId: v.string()
+      }))
+    })
+  ),
+  handler: async (ctx, { onlineOnly = false, limit = 104, limitRooms = 10 }) => {
+    const online = await ctx.db
+      .query("presence")
+      .take(limit);
+
+    const offline = onlineOnly
+      ? []
+      : await ctx.db
+        .query("presence")
+        .order("desc")
+        .take(limit - online.length);
+
+
+    const results = [...online, ...offline];
+
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+
+
+    for (const item of results) {
+      if (seen.has(item.userId)) {
+        duplicates.add(item.userId);
+      } else {
+        seen.add(item.userId);
+      }
+    }
+
+    const userIds = Array.from(duplicates);
+
+    const result: {
+      userId: string,
+      rooms: {
+        roomId: string;
+        online: boolean;
+        lastDisconnected: number;
+      }[]
+    }[] = []
+
+    userIds.forEach((userId) => {
+      const rooms = results.filter((room) => room.userId === userId).map((room) => ({ roomId: room.roomId, online: room.online, lastDisconnected: room.lastDisconnected }));
+
+      result.push({ userId, rooms: rooms.slice(0, limitRooms) })
+    });
+
+    return result;
   },
 });
 
@@ -184,10 +249,10 @@ export const listUser = query({
     const offline = onlineOnly
       ? []
       : await ctx.db
-          .query("presence")
-          .withIndex("user_online_room", (q) => q.eq("userId", userId).eq("online", false))
-          .order("desc")
-          .take(limit - online.length);
+        .query("presence")
+        .withIndex("user_online_room", (q) => q.eq("userId", userId).eq("online", false))
+        .order("desc")
+        .take(limit - online.length);
     const results = [...online, ...offline];
     return results.map(({ roomId, online, lastDisconnected }) => ({
       roomId,

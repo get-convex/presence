@@ -13,7 +13,7 @@ export class Presence<RoomId extends string = string, UserId extends string = st
    * [public.ts](../component/public.ts) for the implementation of these
    * functions.
    */
-  constructor(private component: UseApi<typeof api>) {}
+  constructor(private component: UseApi<typeof api>) { }
 
   /**
    * ============================================================================
@@ -99,6 +99,20 @@ export class Presence<RoomId extends string = string, UserId extends string = st
   ): Promise<Array<{ roomId: RoomId; online: boolean; lastDisconnected: number }>> {
     return ctx.runQuery(this.component.public.listUser, { userId, onlineOnly, limit }) as Promise<
       { roomId: RoomId; online: boolean; lastDisconnected: number }[]
+    >;
+  }
+
+  /**
+   * List all users with rooms they are in.
+   */
+  async listAllUsers(
+    ctx: RunQueryCtx,
+    onlineOnly: boolean = false, // only show rooms the user is online in
+    limit: number = 104,
+    limitRooms: number = 10,
+  ): Promise<Array<{ userId: UserId; rooms: { online: boolean; lastDisconnected: number, roomId: RoomId }[] }>> {
+    return ctx.runQuery(this.component.public.listAllUsers, { onlineOnly, limit, limitRooms }) as Promise<
+      { userId: UserId; rooms: { online: boolean; lastDisconnected: number, roomId: RoomId }[] }[]
     >;
   }
 
