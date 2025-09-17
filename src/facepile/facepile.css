@@ -49,7 +49,6 @@
   border-radius: 50%;
   object-fit: cover;
   display: block;
-  vertical-align: top;
 }
 
 .more {
@@ -88,6 +87,14 @@
 .tooltip-status {
   font-size: 0.625rem;
   color: #6b7280;
+}
+
+.tooltip-data {
+  font-size: 0.625rem;
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .more-container {
@@ -143,7 +150,6 @@
   border-radius: 50%;
   object-fit: cover;
   display: block;
-  vertical-align: top;
 }
 
 .dropdown-info {

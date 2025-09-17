@@ -95,6 +95,7 @@ export const list = query({
       userId: v.string(),
       online: v.boolean(),
       lastDisconnected: v.number(),
+      data: v.optional(v.any()),
     })
   ),
   handler: async (ctx, { roomToken, limit = 104 }) => {
@@ -121,11 +122,12 @@ export const list = query({
       .order("desc")
       .take(limit - online.length);
     const results = [...online, ...offline];
-    return results.map(({ userId, online, lastDisconnected }) => ({
+    return results.map(({ userId, online, lastDisconnected, data }) => ({
       userId,
       online,
       lastDisconnected,
-    }));
+      data,
+    })) as Array<{ userId: string, online: boolean, lastDisconnected: number, data?: unknown }>;
   },
 });
 
@@ -250,6 +252,24 @@ export const disconnect = mutation({
       await ctx.scheduler.cancel(timeout.scheduledFunctionId);
       await ctx.db.delete(timeout._id);
     }
+  },
+});
+
+export const updateRoomUser = mutation({
+  args: {
+    roomId: v.string(),
+    userId: v.string(),
+    data: v.optional(v.any()),
+  },
+  returns: v.null(),
+  handler: async (ctx, { roomId, userId, data }) => {
+    const userPresence = await getUserPresence(ctx, userId, roomId);
+    if (!userPresence) {
+      console.warn("User not in room", roomId, userId);
+      return null;
+    }
+    await ctx.db.patch(userPresence._id, { data });
+    return null
   },
 });
 

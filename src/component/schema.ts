@@ -8,6 +8,7 @@ export default defineSchema({
     userId: v.string(), // Unique identifier for a user in the room.
     online: v.boolean(), // Whether any user session is online.
     lastDisconnected: v.number(), // Timestamp of last disconnect.
+    data: v.optional(v.any()), // Optional data for presence in the room.
   })
     .index("user_online_room", ["userId", "online", "roomId"])
     .index("room_order", ["roomId", "online", "lastDisconnected"]),
