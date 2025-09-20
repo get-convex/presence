@@ -73,6 +73,17 @@ export declare const components: {
           userId: string;
         }>
       >;
+      listAllUsers: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; onlineOnly?: boolean },
+        Array<{
+          lastDisconnected: number;
+          online: boolean;
+          roomId: string;
+          userId: string;
+        }>
+      >;
       listRoom: FunctionReference<
         "query",
         "internal",

@@ -8,7 +8,7 @@
  * @module
  */
 
-import type * as public from "../public.js";
+import type * as public_ from "../public.js";
 
 import type {
   ApiFromModules,
@@ -25,7 +25,7 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
-  public: typeof public;
+  public: typeof public_;
 }>;
 export type Mounts = {
   public: {
@@ -49,6 +49,19 @@ export type Mounts = {
         data?: any;
         lastDisconnected: number;
         online: boolean;
+        userId: string;
+      }>
+    >;
+    listAllUsers: FunctionReference<
+      "query",
+      "public",
+      { limit?: number; limitRooms?: number; onlineOnly?: boolean },
+      Array<{
+        rooms: Array<{
+          lastDisconnected: number;
+          online: boolean;
+          roomId: string;
+        }>;
         userId: string;
       }>
     >;
