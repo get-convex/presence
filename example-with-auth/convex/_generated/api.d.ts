@@ -66,7 +66,12 @@ export declare const components: {
         "query",
         "internal",
         { limit?: number; roomToken: string },
-        Array<{ lastDisconnected: number; online: boolean; userId: string }>
+        Array<{
+          data?: any;
+          lastDisconnected: number;
+          online: boolean;
+          userId: string;
+        }>
       >;
       listRoom: FunctionReference<
         "query",
@@ -90,6 +95,12 @@ export declare const components: {
         "mutation",
         "internal",
         { roomId: string; userId: string },
+        null
+      >;
+      updateRoomUser: FunctionReference<
+        "mutation",
+        "internal",
+        { data?: any; roomId: string; userId: string },
         null
       >;
     };
