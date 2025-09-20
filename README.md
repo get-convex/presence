@@ -105,6 +105,20 @@ This uses the basic `FacePile` component included with this package but you can
 easily copy this code and use the `usePresence` hook directly to implement your
 own styling.
 
+### React Native support
+
+If you're using React Native, install these optional dependencies:
+```sh
+npx expo install react-native expo-crypto
+```
+
+and then import the `usePresence` hook from `@convex-dev/presence/react-native`:
+```ts
+import { usePresence } from '@convex-dev/presence/react-native'; 
+```
+
+*Note: The <FacePile /> component currently doesn't have a React Native equivalent, but you can easily create your own.*
+
 ## Additional functionality
 
 The component interface for the `Presence` class is defined in

@@ -12,7 +12,10 @@
   "keywords": [
     "convex",
     "component",
-    "presence"
+    "presence",
+    "react",
+    "react-native",
+    "expo"
   ],
   "type": "module",
   "scripts": {
@@ -55,6 +58,18 @@
         "default": "./dist/commonjs/react/index.js"
       }
     },
+    "./react-native": {
+      "import": {
+        "@convex-dev/component-source": "./src/react-native/index.ts",
+        "types": "./dist/esm/react-native/index.d.ts",
+        "default": "./dist/esm/react-native/index.js"
+      },
+      "require": {
+        "@convex-dev/component-source": "./src/react-native/index.ts",
+        "types": "./dist/commonjs/react-native/index.d.ts",
+        "default": "./dist/commonjs/react-native/index.js"
+      }
+    },
     "./facepile": {
       "import": {
         "@convex-dev/component-source": "./src/facepile/index.tsx",
@@ -81,14 +96,25 @@
   },
   "peerDependencies": {
     "convex": ">=1.24.8 <1.35.0",
+    "expo-crypto": ">=14.1.0",
     "react": "~18.3.1 || ^19.0.0",
-    "react-dom": "~18.3.1 || ^19.0.0"
+    "react-dom": "~18.3.1 || ^19.0.0",
+    "react-native": ">=0.79.0"
+  },
+  "peerDependenciesMeta": {
+    "react-native": {
+      "optional": true
+    },
+    "expo-crypto": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
     "@types/node": "^18.17.0",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.5",
+    "@types/react-native": "^0.72.8",
     "eslint": "^9.9.1",
     "globals": "^16.2.0",
     "prettier": "^3.5.3",
