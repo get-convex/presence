@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as admin from "../admin.js";
 import type * as presence from "../presence.js";
 
 import type {
@@ -25,6 +26,7 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   presence: typeof presence;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
@@ -66,6 +68,19 @@ export declare const components: {
           data?: any;
           lastDisconnected: number;
           online: boolean;
+          userId: string;
+        }>
+      >;
+      listAllUsers: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; limitRooms?: number; onlineOnly?: boolean },
+        Array<{
+          rooms: Array<{
+            lastDisconnected: number;
+            online: boolean;
+            roomId: string;
+          }>;
           userId: string;
         }>
       >;
