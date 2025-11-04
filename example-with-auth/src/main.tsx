@@ -14,5 +14,5 @@ createRoot(document.getElementById("root")!).render(
     <ConvexAuthProvider client={convex}>
       <App />
     </ConvexAuthProvider>
-  </StrictMode>
+  </StrictMode>,
 );

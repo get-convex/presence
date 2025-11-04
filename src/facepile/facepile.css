@@ -6,7 +6,8 @@
 .container {
   position: relative;
   display: inline-flex;
-  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", helvetica, sans-serif;
+  font-family:
+    system-ui, "Segoe UI", Roboto, "Helvetica Neue", helvetica, sans-serif;
 }
 
 .avatars {

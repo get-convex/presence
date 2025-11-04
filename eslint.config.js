@@ -15,7 +15,11 @@ export default [
     ],
   },
   {
-    files: ["src/**/*.{js,mjs,cjs,ts,tsx}", "example/**/*.{js,mjs,cjs,ts,tsx}", "example-with-auth/**/*.{js,mjs,cjs,ts,tsx}"],
+    files: [
+      "src/**/*.{js,mjs,cjs,ts,tsx}",
+      "example/**/*.{js,mjs,cjs,ts,tsx}",
+      "example-with-auth/**/*.{js,mjs,cjs,ts,tsx}",
+    ],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -34,7 +38,11 @@ export default [
   ...tseslint.configs.recommended,
   // Convex code - Worker environment
   {
-    files: ["src/**/*.{ts,tsx}", "example/convex/**/*.{ts,tsx}", "example-with-auth/convex/**/*.{ts,tsx}"],
+    files: [
+      "src/**/*.{ts,tsx}",
+      "example/convex/**/*.{ts,tsx}",
+      "example-with-auth/convex/**/*.{ts,tsx}",
+    ],
     ignores: ["src/react/**"],
     languageOptions: {
       globals: globals.worker,
@@ -62,7 +70,11 @@ export default [
   },
   // React app code - Browser environment
   {
-    files: ["src/react/**/*.{ts,tsx}", "example/src/**/*.{ts,tsx}", "example-with-auth/src/**/*.{ts,tsx}"],
+    files: [
+      "src/react/**/*.{ts,tsx}",
+      "example/src/**/*.{ts,tsx}",
+      "example-with-auth/src/**/*.{ts,tsx}",
+    ],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
@@ -90,7 +102,12 @@ export default [
   },
   // Example config files (vite.config.ts, etc.) - Node environment
   {
-    files: ["example/vite.config.ts", "example/**/*.config.{js,ts}", "example-with-auth/vite.config.ts", "example-with-auth/**/*.config.{js,ts}"],
+    files: [
+      "example/vite.config.ts",
+      "example/**/*.config.{js,ts}",
+      "example-with-auth/vite.config.ts",
+      "example-with-auth/**/*.config.{js,ts}",
+    ],
     languageOptions: {
       globals: {
         ...globals.node,

@@ -7,7 +7,12 @@ import { AppState } from "react-native";
 import useSingleFlight from "../react/useSingleFlight.js";
 
 export type PresenceAPI = {
-  list: FunctionReference<"query", "public", { roomToken: string }, PresenceState[]>;
+  list: FunctionReference<
+    "query",
+    "public",
+    { roomToken: string },
+    PresenceState[]
+  >;
   heartbeat: FunctionReference<
     "mutation",
     "public",
@@ -29,7 +34,7 @@ export function usePresence(
   roomId: string,
   userId: string,
   interval: number = 10000,
-  convexUrl?: string
+  convexUrl?: string,
 ) {
   const convex = useConvex();
   const baseUrl = convexUrl ?? convex.url;
@@ -55,10 +60,13 @@ export function usePresence(
       fetch(`${baseUrl}/api/mutation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: "presence:disconnect", args: { sessionToken: token } }),
+        body: JSON.stringify({
+          path: "presence:disconnect",
+          args: { sessionToken: token },
+        }),
       }).catch(() => {});
     },
-    [baseUrl]
+    [baseUrl],
   );
 
   // Reset session when roomId/userId changes
@@ -89,7 +97,8 @@ export function usePresence(
     const subscription = AppState.addEventListener("change", (state) => {
       if (state === "background") {
         if (intervalRef.current) clearInterval(intervalRef.current);
-        if (sessionTokenRef.current) fireAndForgetDisconnect(sessionTokenRef.current);
+        if (sessionTokenRef.current)
+          fireAndForgetDisconnect(sessionTokenRef.current);
       } else if (state === "active") {
         void sendHeartbeat();
         intervalRef.current = setInterval(sendHeartbeat, interval);
@@ -118,6 +127,6 @@ export function usePresence(
         if (b.userId === userId) return 1;
         return 0;
       }),
-    [state, userId]
+    [state, userId],
   );
 }

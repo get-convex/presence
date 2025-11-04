@@ -17,7 +17,12 @@ export const getUserId = query({
 });
 
 export const heartbeat = mutation({
-  args: { roomId: v.string(), userId: v.string(), sessionId: v.string(), interval: v.number() },
+  args: {
+    roomId: v.string(),
+    userId: v.string(),
+    sessionId: v.string(),
+    interval: v.number(),
+  },
   handler: async (ctx, { roomId, userId, sessionId, interval }) => {
     console.log("heartbeat", roomId, userId, sessionId, interval);
     const authUserId = await getAuthUserId(ctx);
@@ -46,7 +51,7 @@ export const list = query({
           name: user?.name,
           image: user?.image,
         };
-      })
+      }),
     );
     return listWithUserInfo;
   },

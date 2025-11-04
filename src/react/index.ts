@@ -34,7 +34,12 @@ import useSingleFlight from "./useSingleFlight.js";
 //   },
 // });
 export interface PresenceAPI {
-  list: FunctionReference<"query", "public", { roomToken: string }, PresenceState[]>;
+  list: FunctionReference<
+    "query",
+    "public",
+    { roomToken: string },
+    PresenceState[]
+  >;
   heartbeat: FunctionReference<
     "mutation",
     "public",
@@ -69,7 +74,7 @@ export default function usePresence(
   roomId: string,
   userId: string,
   interval: number = 10000,
-  convexUrl?: string
+  convexUrl?: string,
 ): PresenceState[] | undefined {
   const hasMounted = useRef(false);
   const convex = useConvex();
@@ -137,7 +142,7 @@ export default function usePresence(
           ],
           {
             type: "application/json",
-          }
+          },
         );
         navigator.sendBeacon(`${baseUrl}/api/mutation`, blob);
       }
@@ -195,6 +200,6 @@ export default function usePresence(
         if (b.userId === userId) return 1;
         return 0;
       }),
-    [state, userId]
+    [state, userId],
   );
 }

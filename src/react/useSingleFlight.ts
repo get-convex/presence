@@ -25,7 +25,9 @@ import { useCallback, useRef } from "react";
  * only resolve or throw if the underlying function gets called.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function useSingleFlight<F extends (...args: any[]) => Promise<any>>(fn: F) {
+export default function useSingleFlight<
+  F extends (...args: any[]) => Promise<any>,
+>(fn: F) {
   const flightStatus = useRef({
     inFlight: false,
     upNext: null as null | {
@@ -65,6 +67,6 @@ export default function useSingleFlight<F extends (...args: any[]) => Promise<an
       })();
       return firstReq;
     },
-    [fn]
+    [fn],
   );
 }
