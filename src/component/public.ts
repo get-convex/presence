@@ -5,7 +5,7 @@
 // can be used in Convex server functions.
 
 import { v } from "convex/values";
-import { mutation, query, QueryCtx } from "./_generated/server.js";
+import { mutation, query, type QueryCtx } from "./_generated/server.js";
 import { api } from "./_generated/api.js";
 
 export const heartbeat = mutation({

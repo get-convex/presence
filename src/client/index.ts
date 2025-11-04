@@ -1,4 +1,4 @@
-import { RunMutationCtx, RunQueryCtx } from "./utils.js";
+import type { RunMutationCtx, RunQueryCtx } from "./utils.js";
 import type { ComponentApi } from "../component/_generated/component.js";
 
 export class Presence<RoomId extends string = string, UserId extends string = string> {

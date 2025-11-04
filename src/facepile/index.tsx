@@ -1,5 +1,5 @@
 import React from "react";
-import { PresenceState } from "../react/index.js";
+import type { PresenceState } from "../react/index.js";
 import "./facepile.css";
 
 // React component that displays a facepile of users based on their presence

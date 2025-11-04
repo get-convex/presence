@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useConvex } from "convex/react";
-import { FunctionReference } from "convex/server";
+import type { FunctionReference } from "convex/server";
 import useSingleFlight from "./useSingleFlight.js";
 
 // Interface in your Convex app /convex directory that implements these
