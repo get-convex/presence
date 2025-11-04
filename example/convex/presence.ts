@@ -37,5 +37,5 @@ export const updateRoomUser = mutation({
   handler: async (ctx, { roomId, userId, data }) => {
     // TODO: Add your auth checks here.
     return await presence.updateRoomUser(ctx, roomId, userId, data);
-  }
-})
+  },
+});

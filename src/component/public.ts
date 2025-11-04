@@ -127,7 +127,7 @@ export const list = query({
       online,
       lastDisconnected,
       data,
-    })) as Array<{ userId: string, online: boolean, lastDisconnected: number, data?: unknown }>;
+    })) as Array<{ userId: string; online: boolean; lastDisconnected: number; data?: unknown }>;
   },
 });
 
@@ -269,7 +269,7 @@ export const updateRoomUser = mutation({
       return null;
     }
     await ctx.db.patch(userPresence._id, { data });
-    return null
+    return null;
   },
 });
 
