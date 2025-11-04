@@ -43,7 +43,7 @@ export default [
       "example/convex/**/*.{ts,tsx}",
       "example-with-auth/convex/**/*.{ts,tsx}",
     ],
-    ignores: ["src/react/**"],
+    ignores: ["src/react/**", "src/react-native/**"],
     languageOptions: {
       globals: globals.worker,
     },
@@ -72,6 +72,7 @@ export default [
   {
     files: [
       "src/react/**/*.{ts,tsx}",
+      "src/react-native/**/*.{ts,tsx}",
       "example/src/**/*.{ts,tsx}",
       "example-with-auth/src/**/*.{ts,tsx}",
     ],
@@ -89,6 +90,7 @@ export default [
         "warn",
         { allowConstantExport: true },
       ],
+      "react-hooks/set-state-in-effect": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": [

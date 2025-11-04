@@ -76,7 +76,7 @@ export function usePresence(
     }
 
     if (sessionTokenRef.current) {
-      disconnect({ sessionToken: sessionTokenRef.current });
+      void disconnect({ sessionToken: sessionTokenRef.current });
     }
 
     setSessionId(Crypto.randomUUID());
