@@ -8,7 +8,7 @@
  * @module
  */
 
-import type * as public from "../public.js";
+import type * as public_ from "../public.js";
 
 import type {
   ApiFromModules,
@@ -25,76 +25,15 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
-  public: typeof public;
+  public: typeof public_;
 }>;
-export type Mounts = {
-  public: {
-    disconnect: FunctionReference<
-      "mutation",
-      "public",
-      { sessionToken: string },
-      null
-    >;
-    heartbeat: FunctionReference<
-      "mutation",
-      "public",
-      { interval?: number; roomId: string; sessionId: string; userId: string },
-      { roomToken: string; sessionToken: string }
-    >;
-    list: FunctionReference<
-      "query",
-      "public",
-      { limit?: number; roomToken: string },
-      Array<{
-        data?: any;
-        lastDisconnected: number;
-        online: boolean;
-        userId: string;
-      }>
-    >;
-    listRoom: FunctionReference<
-      "query",
-      "public",
-      { limit?: number; onlineOnly?: boolean; roomId: string },
-      Array<{ lastDisconnected: number; online: boolean; userId: string }>
-    >;
-    listUser: FunctionReference<
-      "query",
-      "public",
-      { limit?: number; onlineOnly?: boolean; userId: string },
-      Array<{ lastDisconnected: number; online: boolean; roomId: string }>
-    >;
-    removeRoom: FunctionReference<
-      "mutation",
-      "public",
-      { roomId: string },
-      null
-    >;
-    removeRoomUser: FunctionReference<
-      "mutation",
-      "public",
-      { roomId: string; userId: string },
-      null
-    >;
-    updateRoomUser: FunctionReference<
-      "mutation",
-      "public",
-      { data?: any; roomId: string; userId: string },
-      null
-    >;
-  };
-};
-// For now fullApiWithMounts is only fullApi which provides
-// jump-to-definition in component client code.
-// Use Mounts for the same type without the inference.
-declare const fullApiWithMounts: typeof fullApi;
 
 export declare const api: FilterApi<
-  typeof fullApiWithMounts,
+  typeof fullApi,
   FunctionReference<any, "public">
 >;
 export declare const internal: FilterApi<
-  typeof fullApiWithMounts,
+  typeof fullApi,
   FunctionReference<any, "internal">
 >;
 

@@ -1,5 +1,5 @@
-import { api } from "../component/_generated/api.js";
-import { RunMutationCtx, RunQueryCtx, UseApi } from "./utils.js";
+import { RunMutationCtx, RunQueryCtx } from "./utils.js";
+import type { ComponentApi } from "../component/_generated/component.js";
 
 export class Presence<RoomId extends string = string, UserId extends string = string> {
   /**
@@ -13,7 +13,7 @@ export class Presence<RoomId extends string = string, UserId extends string = st
    * [public.ts](../component/public.ts) for the implementation of these
    * functions.
    */
-  constructor(private component: UseApi<typeof api>) {}
+  constructor(private component: ComponentApi) {}
 
   /**
    * ============================================================================
@@ -53,9 +53,9 @@ export class Presence<RoomId extends string = string, UserId extends string = st
     ctx: RunQueryCtx,
     roomToken: string,
     limit: number = 104
-  ): Promise<Array<{ userId: UserId; online: boolean; lastDisconnected: number, data?: unknown }>> {
+  ): Promise<Array<{ userId: UserId; online: boolean; lastDisconnected: number; data?: unknown }>> {
     return ctx.runQuery(this.component.public.list, { roomToken, limit }) as Promise<
-      { userId: UserId; online: boolean; lastDisconnected: number, data?: unknown }[]
+      { userId: UserId; online: boolean; lastDisconnected: number; data?: unknown }[]
     >;
   }
 

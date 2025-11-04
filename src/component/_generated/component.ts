@@ -1,6 +1,6 @@
 /* eslint-disable */
 /**
- * Generated `api` utility.
+ * Generated `ComponentApi` utility.
  *
  * THIS CODE IS AUTOMATICALLY GENERATED.
  *
@@ -8,43 +8,26 @@
  * @module
  */
 
-import type * as presence from "../presence.js";
-
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
+import type { FunctionReference } from "convex/server";
 
 /**
- * A utility for referencing Convex functions in your app's API.
+ * A utility for referencing a Convex component's API.
  *
  * Usage:
  * ```js
- * const myFunctionReference = api.myModule.myFunction;
+ * export type MyComponentApi = ComponentApi;
  * ```
  */
-declare const fullApi: ApiFromModules<{
-  presence: typeof presence;
-}>;
 
-export declare const api: FilterApi<
-  typeof fullApi,
-  FunctionReference<any, "public">
->;
-export declare const internal: FilterApi<
-  typeof fullApi,
-  FunctionReference<any, "internal">
->;
-
-export declare const components: {
-  presence: {
+export type ComponentApi<Name extends string | undefined = string | undefined> =
+  {
     public: {
       disconnect: FunctionReference<
         "mutation",
         "internal",
         { sessionToken: string },
-        null
+        null,
+        Name
       >;
       heartbeat: FunctionReference<
         "mutation",
@@ -55,7 +38,8 @@ export declare const components: {
           sessionId: string;
           userId: string;
         },
-        { roomToken: string; sessionToken: string }
+        { roomToken: string; sessionToken: string },
+        Name
       >;
       list: FunctionReference<
         "query",
@@ -66,38 +50,43 @@ export declare const components: {
           lastDisconnected: number;
           online: boolean;
           userId: string;
-        }>
+        }>,
+        Name
       >;
       listRoom: FunctionReference<
         "query",
         "internal",
         { limit?: number; onlineOnly?: boolean; roomId: string },
-        Array<{ lastDisconnected: number; online: boolean; userId: string }>
+        Array<{ lastDisconnected: number; online: boolean; userId: string }>,
+        Name
       >;
       listUser: FunctionReference<
         "query",
         "internal",
         { limit?: number; onlineOnly?: boolean; userId: string },
-        Array<{ lastDisconnected: number; online: boolean; roomId: string }>
+        Array<{ lastDisconnected: number; online: boolean; roomId: string }>,
+        Name
       >;
       removeRoom: FunctionReference<
         "mutation",
         "internal",
         { roomId: string },
-        null
+        null,
+        Name
       >;
       removeRoomUser: FunctionReference<
         "mutation",
         "internal",
         { roomId: string; userId: string },
-        null
+        null,
+        Name
       >;
       updateRoomUser: FunctionReference<
         "mutation",
         "internal",
         { data?: any; roomId: string; userId: string },
-        null
+        null,
+        Name
       >;
     };
   };
-};
