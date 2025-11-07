@@ -41,7 +41,7 @@ First, add the component to your Convex app:
 
 ```ts
 import { defineApp } from "convex/server";
-import presence from "@convex-dev/presence/convex.config";
+import presence from "@convex-dev/presence/convex.config.js";
 
 const app = defineApp();
 app.use(presence);
