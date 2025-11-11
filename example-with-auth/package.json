@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "npm-run-all --parallel dev:backend dev:frontend",
     "build": "vite build",
-    "dev:backend": "convex dev --live-component-sources --typecheck-components",
+    "dev:backend": "convex dev --typecheck-components",
     "dev:frontend": "vite --open",
     "predev": "convex dev --until-success",
     "logs": "convex logs",
