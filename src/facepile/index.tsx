@@ -1,5 +1,5 @@
 import React from "react";
-import { PresenceState } from "../react/index.js";
+import type { PresenceState } from "../react/index.js";
 import "./facepile.css";
 
 // React component that displays a facepile of users based on their presence
@@ -18,7 +18,12 @@ export default function FacePile({
     <div className="container">
       <div className="avatars">
         {visible.map((presence, idx) => (
-          <Avatar key={presence.userId} presence={presence} index={idx} total={visible.length} />
+          <Avatar
+            key={presence.userId}
+            presence={presence}
+            index={idx}
+            total={visible.length}
+          />
         ))}
         {hidden.length > 0 && (
           <div className="more-container">
@@ -68,10 +73,13 @@ function Avatar({
   index: number;
   total: number;
 }) {
-  const presenceData = Object.entries(presence.data ?? {}).reduce((acc, [key, value]) => {
-    acc[`data-presence-${key}`] = String(value);
-    return acc;
-  }, {} as Record<`data-presence-${string}`, string>);
+  const presenceData = Object.entries(presence.data ?? {}).reduce(
+    (acc, [key, value]) => {
+      acc[`data-presence-${key}`] = String(value);
+      return acc;
+    },
+    {} as Record<`data-presence-${string}`, string>,
+  );
 
   return (
     <div
@@ -81,12 +89,18 @@ function Avatar({
       {...presenceData}
     >
       <span role="img" aria-label="user">
-        {presence.image ? <img src={presence.image} alt="user" /> : getEmojiForUserId(presence.userId)}
+        {presence.image ? (
+          <img src={presence.image} alt="user" />
+        ) : (
+          getEmojiForUserId(presence.userId)
+        )}
       </span>
       <span className="tooltip">
         <div className="tooltip-user">{presence.name || presence.userId}</div>
         <div className="tooltip-status">
-          {presence.online ? "Online now" : getTimeAgo(presence.lastDisconnected)}
+          {presence.online
+            ? "Online now"
+            : getTimeAgo(presence.lastDisconnected)}
         </div>
 
         {!!presence.data && (
@@ -109,15 +123,25 @@ function Dropdown({ users }: { users: PresenceState[] }) {
     <div className="dropdown">
       {users.slice(0, 10).map((presence) => (
         <div key={presence.userId} className="dropdown-row">
-          <div className={`dropdown-emoji${!presence.online ? " offline" : ""}`}>
+          <div
+            className={`dropdown-emoji${!presence.online ? " offline" : ""}`}
+          >
             <span role="img" aria-label="user">
-              {presence.image ? <img src={presence.image} alt="user" /> : getEmojiForUserId(presence.userId)}
+              {presence.image ? (
+                <img src={presence.image} alt="user" />
+              ) : (
+                getEmojiForUserId(presence.userId)
+              )}
             </span>
           </div>
           <div className="dropdown-info">
-            <div className="dropdown-user">{presence.name || presence.userId}</div>
+            <div className="dropdown-user">
+              {presence.name || presence.userId}
+            </div>
             <div className="dropdown-status">
-              {presence.online ? "Online now" : getTimeAgo(presence.lastDisconnected)}
+              {presence.online
+                ? "Online now"
+                : getTimeAgo(presence.lastDisconnected)}
             </div>
           </div>
         </div>

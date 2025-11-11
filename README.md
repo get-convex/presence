@@ -26,9 +26,12 @@ npm install @convex-dev/presence
 
 ## Examples
 
-See the `example` directory for a simple example of how to use this component. The `example-with-auth` directory shows how to use the component with authentication.
+See the `example` directory for a simple example of how to use this component.
+The `example-with-auth` directory shows how to use the component with
+authentication.
 
-There's a hosted version of `example-with-auth` at https://presence.previews.convex.dev.
+There's a hosted version of `example-with-auth` at
+https://presence.previews.convex.dev.
 
 ## Usage
 
@@ -38,7 +41,7 @@ First, add the component to your Convex app:
 
 ```ts
 import { defineApp } from "convex/server";
-import presence from "@convex-dev/presence/convex.config";
+import presence from "@convex-dev/presence/convex.config.js";
 
 const app = defineApp();
 app.use(presence);
@@ -56,7 +59,12 @@ import { Presence } from "@convex-dev/presence";
 export const presence = new Presence(components.presence);
 
 export const heartbeat = mutation({
-  args: { roomId: v.string(), userId: v.string(), sessionId: v.string(), interval: v.number() },
+  args: {
+    roomId: v.string(),
+    userId: v.string(),
+    sessionId: v.string(),
+    interval: v.number(),
+  },
   handler: async (ctx, { roomId, userId, sessionId, interval }) => {
     // TODO: Add your auth checks here.
     return await presence.heartbeat(ctx, roomId, userId, sessionId, interval);
@@ -80,7 +88,8 @@ export const disconnect = mutation({
 });
 ```
 
-A `Presence` React component can be instantiated from your client code like this:
+A `Presence` React component can be instantiated from your client code like
+this:
 
 `src/App.tsx`
 
@@ -108,16 +117,19 @@ own styling.
 ### React Native support
 
 If you're using React Native, install these optional dependencies:
+
 ```sh
 npx expo install react-native expo-crypto
 ```
 
 and then import the `usePresence` hook from `@convex-dev/presence/react-native`:
+
 ```ts
-import { usePresence } from '@convex-dev/presence/react-native'; 
+import { usePresence } from "@convex-dev/presence/react-native";
 ```
 
-*Note: The <FacePile /> component currently doesn't have a React Native equivalent, but you can easily create your own.*
+_Note: The <FacePile /> component currently doesn't have a React Native
+equivalent, but you can easily create your own._
 
 ## Additional functionality
 
@@ -125,6 +137,8 @@ The component interface for the `Presence` class is defined in
 `src/client/index.ts`. It includes additional functions for maintaining presence
 state and for querying presence for a given user or room.
 
-e.g., you can use the `listUser` function to check if a user is online in any room.
+e.g., you can use the `listUser` function to check if a user is online in any
+room.
 
-Reach out or join the [Convex Discord Community](https://convex.dev/community) if you have any questions or feedback!
+Reach out or join the [Convex Discord Community](https://convex.dev/community)
+if you have any questions or feedback!

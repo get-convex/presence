@@ -1,7 +1,10 @@
-import { api } from "../component/_generated/api.js";
-import { RunMutationCtx, RunQueryCtx, UseApi } from "./utils.js";
+import type { RunMutationCtx, RunQueryCtx } from "./utils.js";
+import type { ComponentApi } from "../component/_generated/component.js";
 
-export class Presence<RoomId extends string = string, UserId extends string = string> {
+export class Presence<
+  RoomId extends string = string,
+  UserId extends string = string,
+> {
   /**
    * The Presence component tracks the presence of users in a room.
    * A "room" is a unit of presence state, e.g., a chat room, document, game
@@ -13,7 +16,7 @@ export class Presence<RoomId extends string = string, UserId extends string = st
    * [public.ts](../component/public.ts) for the implementation of these
    * functions.
    */
-  constructor(private component: UseApi<typeof api>) {}
+  constructor(private component: ComponentApi) {}
 
   /**
    * ============================================================================
@@ -36,7 +39,7 @@ export class Presence<RoomId extends string = string, UserId extends string = st
     roomId: RoomId,
     userId: UserId,
     sessionId: string,
-    interval: number
+    interval: number,
   ): Promise<{ roomToken: string; sessionToken: string }> {
     return ctx.runMutation(this.component.public.heartbeat, {
       roomId,
@@ -52,10 +55,25 @@ export class Presence<RoomId extends string = string, UserId extends string = st
   async list(
     ctx: RunQueryCtx,
     roomToken: string,
-    limit: number = 104
-  ): Promise<Array<{ userId: UserId; online: boolean; lastDisconnected: number, data?: unknown }>> {
-    return ctx.runQuery(this.component.public.list, { roomToken, limit }) as Promise<
-      { userId: UserId; online: boolean; lastDisconnected: number, data?: unknown }[]
+    limit: number = 104,
+  ): Promise<
+    Array<{
+      userId: UserId;
+      online: boolean;
+      lastDisconnected: number;
+      data?: unknown;
+    }>
+  > {
+    return ctx.runQuery(this.component.public.list, {
+      roomToken,
+      limit,
+    }) as Promise<
+      {
+        userId: UserId;
+        online: boolean;
+        lastDisconnected: number;
+        data?: unknown;
+      }[]
     >;
   }
 
@@ -66,9 +84,13 @@ export class Presence<RoomId extends string = string, UserId extends string = st
     ctx: RunMutationCtx,
     roomId: RoomId,
     userId: UserId,
-    data?: unknown
+    data?: unknown,
   ): Promise<null> {
-    return ctx.runMutation(this.component.public.updateRoomUser, { roomId, userId, data });
+    return ctx.runMutation(this.component.public.updateRoomUser, {
+      roomId,
+      userId,
+      data,
+    });
   }
 
   // Gracefully disconnect a user.
@@ -93,9 +115,15 @@ export class Presence<RoomId extends string = string, UserId extends string = st
     ctx: RunQueryCtx,
     roomId: RoomId,
     onlineOnly: boolean = false, // only show users online in the room
-    limit: number = 104
-  ): Promise<Array<{ userId: UserId; online: boolean; lastDisconnected: number }>> {
-    return ctx.runQuery(this.component.public.listRoom, { roomId, onlineOnly, limit }) as Promise<
+    limit: number = 104,
+  ): Promise<
+    Array<{ userId: UserId; online: boolean; lastDisconnected: number }>
+  > {
+    return ctx.runQuery(this.component.public.listRoom, {
+      roomId,
+      onlineOnly,
+      limit,
+    }) as Promise<
       { userId: UserId; online: boolean; lastDisconnected: number }[]
     >;
   }
@@ -107,9 +135,15 @@ export class Presence<RoomId extends string = string, UserId extends string = st
     ctx: RunQueryCtx,
     userId: UserId,
     onlineOnly: boolean = false, // only show rooms the user is online in
-    limit: number = 104
-  ): Promise<Array<{ roomId: RoomId; online: boolean; lastDisconnected: number }>> {
-    return ctx.runQuery(this.component.public.listUser, { userId, onlineOnly, limit }) as Promise<
+    limit: number = 104,
+  ): Promise<
+    Array<{ roomId: RoomId; online: boolean; lastDisconnected: number }>
+  > {
+    return ctx.runQuery(this.component.public.listUser, {
+      userId,
+      onlineOnly,
+      limit,
+    }) as Promise<
       { roomId: RoomId; online: boolean; lastDisconnected: number }[]
     >;
   }
@@ -117,8 +151,15 @@ export class Presence<RoomId extends string = string, UserId extends string = st
   /**
    * Remove a user from a room.
    */
-  async removeRoomUser(ctx: RunMutationCtx, roomId: RoomId, userId: UserId): Promise<null> {
-    return ctx.runMutation(this.component.public.removeRoomUser, { roomId, userId });
+  async removeRoomUser(
+    ctx: RunMutationCtx,
+    roomId: RoomId,
+    userId: UserId,
+  ): Promise<null> {
+    return ctx.runMutation(this.component.public.removeRoomUser, {
+      roomId,
+      userId,
+    });
   }
 
   /**

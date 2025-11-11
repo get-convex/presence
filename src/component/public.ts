@@ -5,7 +5,7 @@
 // can be used in Convex server functions.
 
 import { v } from "convex/values";
-import { mutation, query, QueryCtx } from "./_generated/server.js";
+import { mutation, query, type QueryCtx } from "./_generated/server.js";
 import { api } from "./_generated/api.js";
 
 export const heartbeat = mutation({
@@ -28,15 +28,25 @@ export const heartbeat = mutation({
     if (!session) {
       await ctx.db.insert("sessions", { roomId, userId, sessionId });
     } else if (session.roomId !== roomId || session.userId !== userId) {
-      throw new Error(`sessionId ${sessionId} must be unique for a given room/user`);
+      throw new Error(
+        `sessionId ${sessionId} must be unique for a given room/user`,
+      );
     }
 
     // Set user online if needed.
     const userPresence = await getUserPresence(ctx, userId, roomId);
     if (!userPresence) {
-      await ctx.db.insert("presence", { roomId, userId, online: true, lastDisconnected: 0 });
+      await ctx.db.insert("presence", {
+        roomId,
+        userId,
+        online: true,
+        lastDisconnected: 0,
+      });
     } else if (!userPresence.online) {
-      await ctx.db.patch(userPresence._id, { online: true, lastDisconnected: 0 });
+      await ctx.db.patch(userPresence._id, {
+        online: true,
+        lastDisconnected: 0,
+      });
     }
 
     // Cancel any existing timeout for session.
@@ -76,10 +86,17 @@ export const heartbeat = mutation({
     }
 
     // Schedule timeout heartbeat for 2.5x heartbeat period.
-    const timeout = await ctx.scheduler.runAfter(interval * 2.5, api.public.disconnect, {
-      sessionToken: sessionToken,
+    const timeout = await ctx.scheduler.runAfter(
+      interval * 2.5,
+      api.public.disconnect,
+      {
+        sessionToken: sessionToken,
+      },
+    );
+    await ctx.db.insert("sessionTimeouts", {
+      sessionId,
+      scheduledFunctionId: timeout,
     });
-    await ctx.db.insert("sessionTimeouts", { sessionId, scheduledFunctionId: timeout });
 
     return { roomToken, sessionToken: sessionToken };
   },
@@ -96,7 +113,7 @@ export const list = query({
       online: v.boolean(),
       lastDisconnected: v.number(),
       data: v.optional(v.any()),
-    })
+    }),
   ),
   handler: async (ctx, { roomToken, limit = 104 }) => {
     if (!roomToken) {
@@ -118,7 +135,9 @@ export const list = query({
       .take(limit);
     const offline = await ctx.db
       .query("presence")
-      .withIndex("room_order", (q) => q.eq("roomId", roomId).eq("online", false))
+      .withIndex("room_order", (q) =>
+        q.eq("roomId", roomId).eq("online", false),
+      )
       .order("desc")
       .take(limit - online.length);
     const results = [...online, ...offline];
@@ -127,7 +146,12 @@ export const list = query({
       online,
       lastDisconnected,
       data,
-    })) as Array<{ userId: string, online: boolean, lastDisconnected: number, data?: unknown }>;
+    })) as Array<{
+      userId: string;
+      online: boolean;
+      lastDisconnected: number;
+      data?: unknown;
+    }>;
   },
 });
 
@@ -142,7 +166,7 @@ export const listRoom = query({
       userId: v.string(),
       online: v.boolean(),
       lastDisconnected: v.number(),
-    })
+    }),
   ),
   handler: async (ctx, { roomId, onlineOnly = false, limit = 104 }) => {
     const online = await ctx.db
@@ -153,7 +177,9 @@ export const listRoom = query({
       ? []
       : await ctx.db
           .query("presence")
-          .withIndex("room_order", (q) => q.eq("roomId", roomId).eq("online", false))
+          .withIndex("room_order", (q) =>
+            q.eq("roomId", roomId).eq("online", false),
+          )
           .order("desc")
           .take(limit - online.length);
     const results = [...online, ...offline];
@@ -176,18 +202,22 @@ export const listUser = query({
       roomId: v.string(),
       online: v.boolean(),
       lastDisconnected: v.number(),
-    })
+    }),
   ),
   handler: async (ctx, { userId, onlineOnly = false, limit = 104 }) => {
     const online = await ctx.db
       .query("presence")
-      .withIndex("user_online_room", (q) => q.eq("userId", userId).eq("online", true))
+      .withIndex("user_online_room", (q) =>
+        q.eq("userId", userId).eq("online", true),
+      )
       .take(limit);
     const offline = onlineOnly
       ? []
       : await ctx.db
           .query("presence")
-          .withIndex("user_online_room", (q) => q.eq("userId", userId).eq("online", false))
+          .withIndex("user_online_room", (q) =>
+            q.eq("userId", userId).eq("online", false),
+          )
           .order("desc")
           .take(limit - online.length);
     const results = [...online, ...offline];
@@ -221,7 +251,11 @@ export const disconnect = mutation({
       .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
       .unique();
     if (!session) {
-      console.error("Should not have a session token", sessionToken, "without a session");
+      console.error(
+        "Should not have a session token",
+        sessionToken,
+        "without a session",
+      );
       return;
     }
 
@@ -230,17 +264,26 @@ export const disconnect = mutation({
 
     const userPresence = await getUserPresence(ctx, userId, roomId);
     if (!userPresence) {
-      console.error("Should not have a session token", sessionToken, "without a user presence");
+      console.error(
+        "Should not have a session token",
+        sessionToken,
+        "without a user presence",
+      );
       return;
     }
 
     // Mark user offline if they don't have any remaining sessions.
     const remainingSessions = await ctx.db
       .query("sessions")
-      .withIndex("room_user_session", (q) => q.eq("roomId", roomId).eq("userId", userId))
+      .withIndex("room_user_session", (q) =>
+        q.eq("roomId", roomId).eq("userId", userId),
+      )
       .collect();
     if (userPresence.online && remainingSessions.length === 0) {
-      await ctx.db.patch(userPresence._id, { online: false, lastDisconnected: Date.now() });
+      await ctx.db.patch(userPresence._id, {
+        online: false,
+        lastDisconnected: Date.now(),
+      });
     }
 
     // Cancel timeout for this session.
@@ -269,7 +312,7 @@ export const updateRoomUser = mutation({
       return null;
     }
     await ctx.db.patch(userPresence._id, { data });
-    return null
+    return null;
   },
 });
 
@@ -290,7 +333,9 @@ export const removeRoomUser = mutation({
     // Remove the user from all sessions.
     const sessions = await ctx.db
       .query("sessions")
-      .withIndex("room_user_session", (q) => q.eq("roomId", roomId).eq("userId", userId))
+      .withIndex("room_user_session", (q) =>
+        q.eq("roomId", roomId).eq("userId", userId),
+      )
       .collect();
     for (const session of sessions) {
       await ctx.db.delete(session._id);
@@ -369,13 +414,13 @@ async function getUserPresence(ctx: QueryCtx, userId: string, roomId: string) {
     (await ctx.db
       .query("presence")
       .withIndex("user_online_room", (q) =>
-        q.eq("userId", userId).eq("online", true).eq("roomId", roomId)
+        q.eq("userId", userId).eq("online", true).eq("roomId", roomId),
       )
       .unique()) ||
     (await ctx.db
       .query("presence")
       .withIndex("user_online_room", (q) =>
-        q.eq("userId", userId).eq("online", false).eq("roomId", roomId)
+        q.eq("userId", userId).eq("online", false).eq("roomId", roomId),
       )
       .unique())
   );

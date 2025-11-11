@@ -6,7 +6,12 @@ import { Presence } from "@convex-dev/presence";
 export const presence = new Presence(components.presence);
 
 export const heartbeat = mutation({
-  args: { roomId: v.string(), userId: v.string(), sessionId: v.string(), interval: v.number() },
+  args: {
+    roomId: v.string(),
+    userId: v.string(),
+    sessionId: v.string(),
+    interval: v.number(),
+  },
   handler: async (ctx, { roomId, userId, sessionId, interval }) => {
     // TODO: Add your auth checks here.
     console.log("heartbeat", roomId, userId, sessionId, interval);
@@ -37,5 +42,5 @@ export const updateRoomUser = mutation({
   handler: async (ctx, { roomId, userId, data }) => {
     // TODO: Add your auth checks here.
     return await presence.updateRoomUser(ctx, roomId, userId, data);
-  }
-})
+  },
+});
