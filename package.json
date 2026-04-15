@@ -21,6 +21,7 @@
   "scripts": {
     "dev": "convex dev --start 'npm run dev:build'",
     "dev:frontend": "cd example && vite --clearScreen false",
+    "dev:frontend-with-auth": "cd example-with-auth && vite --clearScreen false",
     "dev:build": "chokidar 'tsconfig*.json' 'src/**/*.ts' -i '**/*.test.ts' -c 'npm run build:codegen' --initial",
     "predev": "convex init && npm run build:codegen",
     "build": "tsc --project ./tsconfig.build.json && cp src/facepile/facepile.css dist/facepile",
@@ -89,6 +90,7 @@
     }
   },
   "devDependencies": {
+    "@convex-dev/auth": "0.0.91",
     "@edge-runtime/vm": "5.0.0",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.38.0",
