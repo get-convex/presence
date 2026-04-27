@@ -43,7 +43,7 @@ export const heartbeat = mutation({
         lastDisconnected: 0,
       });
     } else if (!userPresence.online) {
-      await ctx.db.patch(userPresence._id, {
+      await ctx.db.patch("presence", userPresence._id, {
         online: true,
         lastDisconnected: 0,
       });
@@ -56,7 +56,7 @@ export const heartbeat = mutation({
       .unique();
     if (existingTimeout) {
       await ctx.scheduler.cancel(existingTimeout.scheduledFunctionId);
-      await ctx.db.delete(existingTimeout._id);
+      await ctx.db.delete("sessionTimeouts", existingTimeout._id);
     }
 
     // Generate token to list room presence.
@@ -242,7 +242,7 @@ export const disconnect = mutation({
     if (!sessionTokenRecord) {
       return;
     }
-    await ctx.db.delete(sessionTokenRecord._id);
+    await ctx.db.delete("sessionTokens", sessionTokenRecord._id);
     const { sessionId } = sessionTokenRecord;
 
     // Remove the session
@@ -260,7 +260,7 @@ export const disconnect = mutation({
     }
 
     const { roomId, userId } = session;
-    await ctx.db.delete(session._id);
+    await ctx.db.delete("sessions", session._id);
 
     const userPresence = await getUserPresence(ctx, userId, roomId);
     if (!userPresence) {
@@ -280,7 +280,7 @@ export const disconnect = mutation({
       )
       .collect();
     if (userPresence.online && remainingSessions.length === 0) {
-      await ctx.db.patch(userPresence._id, {
+      await ctx.db.patch("presence", userPresence._id, {
         online: false,
         lastDisconnected: Date.now(),
       });
@@ -293,7 +293,7 @@ export const disconnect = mutation({
       .unique();
     if (timeout) {
       await ctx.scheduler.cancel(timeout.scheduledFunctionId);
-      await ctx.db.delete(timeout._id);
+      await ctx.db.delete("sessionTimeouts", timeout._id);
     }
   },
 });
@@ -311,7 +311,7 @@ export const updateRoomUser = mutation({
       console.warn("User not in room", roomId, userId);
       return null;
     }
-    await ctx.db.patch(userPresence._id, { data });
+    await ctx.db.patch("presence", userPresence._id, { data });
     return null;
   },
 });
@@ -328,7 +328,7 @@ export const removeRoomUser = mutation({
       console.warn("User not in room", roomId, userId);
       return null;
     }
-    await ctx.db.delete(userPresence._id);
+    await ctx.db.delete("presence", userPresence._id);
 
     // Remove the user from all sessions.
     const sessions = await ctx.db
@@ -338,13 +338,13 @@ export const removeRoomUser = mutation({
       )
       .collect();
     for (const session of sessions) {
-      await ctx.db.delete(session._id);
+      await ctx.db.delete("sessions", session._id);
       const sessionToken = await ctx.db
         .query("sessionTokens")
         .withIndex("sessionId", (q) => q.eq("sessionId", session.sessionId))
         .unique();
       if (sessionToken) {
-        await ctx.db.delete(sessionToken._id);
+        await ctx.db.delete("sessionTokens", sessionToken._id);
       }
       const timeout = await ctx.db
         .query("sessionTimeouts")
@@ -352,7 +352,7 @@ export const removeRoomUser = mutation({
         .unique();
       if (timeout) {
         await ctx.scheduler.cancel(timeout.scheduledFunctionId);
-        await ctx.db.delete(timeout._id);
+        await ctx.db.delete("sessionTimeouts", timeout._id);
       }
     }
     return null;
@@ -371,7 +371,7 @@ export const removeRoom = mutation({
       .withIndex("room_order", (q) => q.eq("roomId", roomId))
       .collect();
     for (const presence of presenceRecords) {
-      await ctx.db.delete(presence._id);
+      await ctx.db.delete("presence", presence._id);
     }
 
     const sessions = await ctx.db
@@ -379,14 +379,14 @@ export const removeRoom = mutation({
       .withIndex("room_user_session", (q) => q.eq("roomId", roomId))
       .collect();
     for (const session of sessions) {
-      await ctx.db.delete(session._id);
+      await ctx.db.delete("sessions", session._id);
 
       const sessionToken = await ctx.db
         .query("sessionTokens")
         .withIndex("sessionId", (q) => q.eq("sessionId", session.sessionId))
         .unique();
       if (sessionToken) {
-        await ctx.db.delete(sessionToken._id);
+        await ctx.db.delete("sessionTokens", sessionToken._id);
       }
 
       const timeout = await ctx.db
@@ -395,7 +395,7 @@ export const removeRoom = mutation({
         .unique();
       if (timeout) {
         await ctx.scheduler.cancel(timeout.scheduledFunctionId);
-        await ctx.db.delete(timeout._id);
+        await ctx.db.delete("sessionTimeouts", timeout._id);
       }
     }
 
@@ -404,7 +404,7 @@ export const removeRoom = mutation({
       .withIndex("room", (q) => q.eq("roomId", roomId))
       .unique();
     if (roomToken) {
-      await ctx.db.delete(roomToken._id);
+      await ctx.db.delete("roomTokens", roomToken._id);
     }
   },
 });
