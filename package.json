@@ -112,7 +112,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-native": "0.82.1",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.0",
     "typescript-eslint": "^8.46.2",
     "vite": "^7.1.12",
     "vitest": "^3.2.4"
