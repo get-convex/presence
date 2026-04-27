@@ -100,7 +100,7 @@
     "@types/react-dom": "^19.2.2",
     "@typescript-eslint/eslint-plugin": "^8.46.2",
     "@typescript-eslint/parser": "^8.46.2",
-    "@vitejs/plugin-react": "^5.1.0",
+    "@vitejs/plugin-react": "^6.0.0",
     "chokidar-cli": "3.0.0",
     "convex": "1.35.1",
     "convex-test": "^0.0.38",
