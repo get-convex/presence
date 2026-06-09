@@ -43,5 +43,11 @@ export default defineSchema({
   sessionTimeouts: defineTable({
     sessionId: v.string(),
     scheduledFunctionId: v.id("_scheduled_functions"),
+    // Wall-clock time (ms) the armed `scheduledFunctionId` is expected to fire.
+    // Lets a heartbeat decide — without touching the scheduler — whether the
+    // armed timeout is close enough to firing to be worth pushing out, so most
+    // heartbeats can skip rescheduling entirely. Optional for backward
+    // compatibility with rows created before this field existed.
+    deadline: v.optional(v.number()),
   }).index("sessionId", ["sessionId"]),
 });
