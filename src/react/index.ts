@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useConvex } from "convex/react";
 import type { FunctionReference } from "convex/server";
 import useSingleFlight from "./useSingleFlight.js";
+import useTabLeader, { hasOtherContenders } from "./useTabLeader.js";
 
 // Interface in your Convex app /convex directory that implements these
 // functions by calling into the presence component, e.g., like this:
@@ -61,6 +62,21 @@ export interface PresenceState {
   image?: string;
 }
 
+// Options for `usePresence`.
+export interface UsePresenceOptions {
+  // Coordinate across browser tabs so that only one *visible* tab heartbeats on
+  // behalf of the user, using Web Locks leader election. This collapses N open
+  // tabs into a single session + heartbeat stream, avoiding the database
+  // contention that independent per-tab heartbeats cause. The user is considered
+  // present while at least one tab is visible; presence is handed between tabs
+  // as they are shown/hidden/closed.
+  //
+  // Defaults to false, preserving the original behavior where every visible tab
+  // heartbeats on its own. Falls back to that behavior automatically where the
+  // Web Locks API is unavailable.
+  coordinateTabs?: boolean;
+}
+
 // React hook for maintaining presence state.
 //
 // This hook is designed to be efficient and only sends a message to users
@@ -75,6 +91,7 @@ export default function usePresence(
   userId: string,
   interval: number = 10000,
   convexUrl?: string,
+  options?: UsePresenceOptions,
 ): PresenceState[] | undefined {
   const hasMounted = useRef(false);
   const convex = useConvex();
@@ -92,6 +109,33 @@ export default function usePresence(
 
   const heartbeat = useSingleFlight(useMutation(presence.heartbeat));
   const disconnect = useSingleFlight(useMutation(presence.disconnect));
+
+  // Tab coordination. Only enabled when requested and supported; otherwise this
+  // collapses to the original per-tab behavior (`active` === `visible`).
+  const canCoordinate =
+    (options?.coordinateTabs ?? false) &&
+    typeof navigator !== "undefined" &&
+    !!navigator.locks;
+  const lockName = `convex-presence-leader:${roomId}:${userId}`;
+
+  // Track whether this tab is visible.
+  const [visible, setVisible] = useState(
+    () => typeof document === "undefined" || !document.hidden,
+  );
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onChange = () => setVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onChange);
+    return () => document.removeEventListener("visibilitychange", onChange);
+  }, []);
+
+  // Contend for leadership only while visible (so presence reflects "any visible
+  // tab"). The leader is the single tab that heartbeats.
+  const isLeader = useTabLeader(lockName, canCoordinate && visible);
+
+  // This tab heartbeats when it is the visible leader (coordinating) or simply
+  // while it is visible (not coordinating — the original per-tab behavior).
+  const active = canCoordinate ? isLeader : visible;
 
   useEffect(() => {
     // Reset session state when roomId or userId changes.
@@ -114,24 +158,25 @@ export default function usePresence(
   }, [sessionToken, roomToken]);
 
   useEffect(() => {
-    // Periodic heartbeats.
+    // Heartbeat while this tab is the active presence owner.
+    if (!active) return;
+
     const sendHeartbeat = async () => {
       const result = await heartbeat({ roomId, userId, sessionId, interval });
       setRoomToken(result.roomToken);
       setSessionToken(result.sessionToken);
     };
 
-    // Send initial heartbeat
     void sendHeartbeat();
+    const id = setInterval(() => void sendHeartbeat(), interval);
+    intervalRef.current = id;
 
-    // Clear any existing interval before setting a new one
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-    intervalRef.current = setInterval(sendHeartbeat, interval);
-
-    // Handle page unload.
+    // On page unload without coordination, beacon a disconnect (the original
+    // behavior). When coordinating we let the browser release the Web Lock — a
+    // waiting tab takes over, or the server-side timeout marks the last tab
+    // offline — so no beacon is needed.
     const handleUnload = () => {
+      if (canCoordinate) return;
       if (sessionTokenRef.current) {
         const blob = new Blob(
           [
@@ -140,53 +185,52 @@ export default function usePresence(
               args: { sessionToken: sessionTokenRef.current },
             }),
           ],
-          {
-            type: "application/json",
-          },
+          { type: "application/json" },
         );
         navigator.sendBeacon(`${baseUrl}/api/mutation`, blob);
       }
     };
     window.addEventListener("beforeunload", handleUnload);
 
-    // Handle visibility changes.
-    const handleVisibility = async () => {
-      if (document.hidden) {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-        if (sessionTokenRef.current) {
-          await disconnect({ sessionToken: sessionTokenRef.current });
-        }
-      } else {
-        void sendHeartbeat();
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-        }
-        intervalRef.current = setInterval(sendHeartbeat, interval);
-      }
-    };
-    const wrappedHandleVisibility = () => {
-      handleVisibility().catch(console.error);
-    };
-    document.addEventListener("visibilitychange", wrappedHandleVisibility);
-
-    // Cleanup.
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+      clearInterval(id);
+      if (intervalRef.current === id) {
+        intervalRef.current = null;
       }
-      document.removeEventListener("visibilitychange", wrappedHandleVisibility);
       window.removeEventListener("beforeunload", handleUnload);
-      // Don't disconnect on first render in strict mode.
-      if (hasMounted.current) {
-        if (sessionTokenRef.current) {
-          void disconnect({ sessionToken: sessionTokenRef.current });
-        }
+
+      const token = sessionTokenRef.current;
+      // Don't disconnect on the throwaway first cleanup in strict mode.
+      if (!token || !hasMounted.current) return;
+
+      if (!canCoordinate) {
+        // Per-tab behavior: disconnect whenever this tab stops being active
+        // (hidden or unmounted).
+        void disconnect({ sessionToken: token });
+        return;
       }
+      // Coordinating: this tab is stepping down as leader. Disconnect only if no
+      // other tab is waiting to take over (we were the last visible tab).
+      // Otherwise hand off silently — the next leader keeps the user online and
+      // this tab's now-orphaned session is reaped by the server-side timeout.
+      void hasOtherContenders(lockName).then((others) => {
+        if (!others) {
+          void disconnect({ sessionToken: token });
+        }
+      });
     };
-  }, [heartbeat, disconnect, roomId, userId, baseUrl, interval, sessionId]);
+  }, [
+    active,
+    heartbeat,
+    disconnect,
+    roomId,
+    userId,
+    sessionId,
+    interval,
+    baseUrl,
+    canCoordinate,
+    lockName,
+  ]);
 
   useEffect(() => {
     hasMounted.current = true;
