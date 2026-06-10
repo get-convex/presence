@@ -9,6 +9,7 @@ import {
   type MutationCtx,
   type QueryCtx,
   internalMutation,
+  internalQuery,
   mutation,
   query,
 } from "./_generated/server.js";
@@ -49,19 +50,34 @@ export const heartbeat = mutation({
     }
 
     // Set user online if needed.
-    const userPresence = await getUserPresence(ctx, userId, roomId);
-    if (!userPresence) {
-      await ctx.db.insert("presence", {
-        roomId,
-        userId,
-        online: true,
-        lastDisconnected: 0,
-      });
-    } else if (!userPresence.online) {
-      await ctx.db.patch("presence", userPresence._id, {
-        online: true,
-        lastDisconnected: 0,
-      });
+    //
+    // Fast path: check whether the user is already online via a *snapshot*
+    // query, which does not add the shared per-user presence row to this
+    // mutation's read set. Reading that row directly here is the main source of
+    // heartbeat OCC contention, because a concurrent `disconnect` writes it. In
+    // the overwhelmingly common case (already online) we then do nothing, taking
+    // no dependency on it at all.
+    //
+    // Only when we are not already online do we fall back to a tracked read and
+    // create/patch the row under normal OCC protection — the snapshot result
+    // alone must never drive the write, or two concurrent first beats could both
+    // insert a presence row and break the `getUserPresence` uniqueness.
+    const alreadyOnline = await runSnapshotQuery(ctx, { userId, roomId });
+    if (!alreadyOnline) {
+      const userPresence = await getUserPresence(ctx, userId, roomId);
+      if (!userPresence) {
+        await ctx.db.insert("presence", {
+          roomId,
+          userId,
+          online: true,
+          lastDisconnected: 0,
+        });
+      } else if (!userPresence.online) {
+        await ctx.db.patch("presence", userPresence._id, {
+          online: true,
+          lastDisconnected: 0,
+        });
+      }
     }
 
     // Generate token to list room presence.
@@ -510,6 +526,39 @@ async function getUserPresence(ctx: QueryCtx, userId: string, roomId: string) {
         q.eq("userId", userId).eq("online", false).eq("roomId", roomId),
       )
       .unique())
+  );
+}
+
+// Whether the user is currently online in the room. Read by `heartbeat` via a
+// snapshot query (see `runSnapshotQuery`) so the read does not enter the
+// heartbeat's read set.
+export const userPresenceOnline = internalQuery({
+  args: { userId: v.string(), roomId: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { userId, roomId }) => {
+    const presence = await getUserPresence(ctx, userId, roomId);
+    return presence?.online === true;
+  },
+});
+
+// `ctx.runSnapshotQuery` runs a query without recording its reads in the calling
+// mutation's read set, so OCC won't retry the mutation when the queried rows
+// change concurrently. It isn't in the generated `MutationCtx` type yet, so we
+// narrow `ctx` to just the method we use.
+type SnapshotQueryCtx = {
+  runSnapshotQuery: (
+    ref: typeof internal.public.userPresenceOnline,
+    args: { userId: string; roomId: string },
+  ) => Promise<boolean>;
+};
+
+function runSnapshotQuery(
+  ctx: MutationCtx,
+  args: { userId: string; roomId: string },
+): Promise<boolean> {
+  return (ctx as MutationCtx & SnapshotQueryCtx).runSnapshotQuery(
+    internal.public.userPresenceOnline,
+    args,
   );
 }
 

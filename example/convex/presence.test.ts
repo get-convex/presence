@@ -22,6 +22,30 @@ describe("presence heartbeat / timeout", () => {
     expect(list).toMatchObject([{ userId: USER, online: false }]);
   });
 
+  // Exercises the snapshot fast-path's fallback: when the snapshot says the user
+  // is not online, the heartbeat takes a tracked read and flips them back online.
+  test("a heartbeat after disconnect brings the user back online", async () => {
+    const t = initConvexTest();
+    const first = await t.mutation(api.presence.heartbeat, {
+      roomId: ROOM,
+      userId: USER,
+      sessionId: "s1",
+      interval: 10000,
+    });
+    await t.mutation(api.presence.disconnect, {
+      sessionToken: first.sessionToken,
+    });
+
+    const { roomToken } = await t.mutation(api.presence.heartbeat, {
+      roomId: ROOM,
+      userId: USER,
+      sessionId: "s1",
+      interval: 10000,
+    });
+    const list = await t.query(api.presence.list, { roomToken });
+    expect(list).toMatchObject([{ userId: USER, online: true }]);
+  });
+
   // Continued heartbeats keep the disconnect timeout pushed out (without
   // rescheduling on every beat), so the user stays online across several
   // timeout windows as long as heartbeats continue.
