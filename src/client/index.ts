@@ -1,4 +1,4 @@
-import type { RunMutationCtx, RunQueryCtx } from "./utils.js";
+import type { ActionCtx, MutationCtx, QueryCtx } from "./utils.js";
 import type { ComponentApi } from "../component/_generated/component.js";
 
 export class Presence<
@@ -35,7 +35,7 @@ export class Presence<
    * graceful disconnect message is received. Returns room and session tokens.
    */
   async heartbeat(
-    ctx: RunMutationCtx,
+    ctx: MutationCtx | ActionCtx,
     roomId: RoomId,
     userId: UserId,
     sessionId: string,
@@ -53,7 +53,7 @@ export class Presence<
    * List presence state for all users in the room, up to the limit of users.
    */
   async list(
-    ctx: RunQueryCtx,
+    ctx: QueryCtx | MutationCtx | ActionCtx,
     roomToken: string,
     limit: number = 104,
   ): Promise<
@@ -81,7 +81,7 @@ export class Presence<
    * Updates a users presence data in a room.
    */
   async updateRoomUser(
-    ctx: RunMutationCtx,
+    ctx: MutationCtx | ActionCtx,
     roomId: RoomId,
     userId: UserId,
     data?: unknown,
@@ -94,7 +94,10 @@ export class Presence<
   }
 
   // Gracefully disconnect a user.
-  async disconnect(ctx: RunMutationCtx, sessionToken: string): Promise<null> {
+  async disconnect(
+    ctx: MutationCtx | ActionCtx,
+    sessionToken: string,
+  ): Promise<null> {
     return ctx.runMutation(this.component.public.disconnect, { sessionToken });
   }
 
@@ -112,7 +115,7 @@ export class Presence<
    * List all users in a room.
    */
   async listRoom(
-    ctx: RunQueryCtx,
+    ctx: QueryCtx | MutationCtx | ActionCtx,
     roomId: RoomId,
     onlineOnly: boolean = false, // only show users online in the room
     limit: number = 104,
@@ -132,7 +135,7 @@ export class Presence<
    * List all rooms a user is in.
    */
   async listUser(
-    ctx: RunQueryCtx,
+    ctx: QueryCtx | MutationCtx | ActionCtx,
     userId: UserId,
     onlineOnly: boolean = false, // only show rooms the user is online in
     limit: number = 104,
@@ -152,7 +155,7 @@ export class Presence<
    * Remove a user from a room.
    */
   async removeRoomUser(
-    ctx: RunMutationCtx,
+    ctx: MutationCtx | ActionCtx,
     roomId: RoomId,
     userId: UserId,
   ): Promise<null> {
@@ -165,7 +168,10 @@ export class Presence<
   /**
    * Remove a room.
    */
-  async removeRoom(ctx: RunMutationCtx, roomId: RoomId): Promise<null> {
+  async removeRoom(
+    ctx: MutationCtx | ActionCtx,
+    roomId: RoomId,
+  ): Promise<null> {
     return ctx.runMutation(this.component.public.removeRoom, { roomId });
   }
 }
