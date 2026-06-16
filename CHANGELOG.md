@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+- Avoids self-cancelation of scheduled functions, now that mutations aren't
+  allowed to cancel themselves.
+
 ## 0.3.0
 
 - Adds /test and /\_generated/component.js entrypoints
