@@ -91,6 +91,7 @@ export const heartbeat = mutation({
       api.public.disconnect,
       {
         sessionToken: sessionToken,
+        scheduled: true,
       },
     );
     await ctx.db.insert("sessionTimeouts", {
@@ -232,9 +233,10 @@ export const listUser = query({
 export const disconnect = mutation({
   args: {
     sessionToken: v.string(),
+    scheduled: v.optional(v.boolean()),
   },
   returns: v.null(),
-  handler: async (ctx, { sessionToken }) => {
+  handler: async (ctx, { sessionToken, scheduled }) => {
     const sessionTokenRecord = await ctx.db
       .query("sessionTokens")
       .withIndex("token", (q) => q.eq("token", sessionToken))
@@ -292,7 +294,9 @@ export const disconnect = mutation({
       .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
       .unique();
     if (timeout) {
-      await ctx.scheduler.cancel(timeout.scheduledFunctionId);
+      if (!scheduled) {
+        await ctx.scheduler.cancel(timeout.scheduledFunctionId);
+      }
       await ctx.db.delete("sessionTimeouts", timeout._id);
     }
   },
