@@ -56,7 +56,6 @@ export const heartbeat = mutation({
       .unique();
     if (existingTimeout) {
       await ctx.scheduler.cancel(existingTimeout.scheduledFunctionId);
-      await ctx.db.delete("sessionTimeouts", existingTimeout._id);
     }
 
     // Generate token to list room presence.
@@ -94,10 +93,16 @@ export const heartbeat = mutation({
         scheduled: true,
       },
     );
-    await ctx.db.insert("sessionTimeouts", {
-      sessionId,
-      scheduledFunctionId: timeout,
-    });
+    if (existingTimeout) {
+      await ctx.db.patch("sessionTimeouts", existingTimeout._id, {
+        scheduledFunctionId: timeout,
+      });
+    } else {
+      await ctx.db.insert("sessionTimeouts", {
+        sessionId,
+        scheduledFunctionId: timeout,
+      });
+    }
 
     return { roomToken, sessionToken: sessionToken };
   },
