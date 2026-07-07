@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2
+
+- Patches instead of re-creating timeout documents for efficiency
+
 ## 0.3.1
 
 - Avoids self-cancelation of scheduled functions, now that mutations aren't
