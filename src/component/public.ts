@@ -55,15 +55,16 @@ export const heartbeat = mutation({
 
     // Wake the disconnect worker if this deadline may be earlier than the one
     // it's sleeping until: a new session while the worker may be fully idle,
-    // or an existing session shrinking its deadline.
-    // TODO: a burst of new sessions interrupts the sleeping worker once per
-    // ping; update batch-worker to ignore pings that wouldn't move its wakeup
-    // earlier.
+    // or an existing session shrinking its deadline. Debouncing bounds a
+    // burst of joins to one worker wakeup per second.
+    // TODO: update batch-worker to ignore pings that wouldn't move its wakeup
+    // earlier, skipping the per-debounce-window wakeup entirely.
     if (!session || deadline < session.deadline) {
       await ping(ctx, components.batchWorker, {
         name: "disconnect",
         workQuery: internal.public.getExpiredSessions,
         workerMutation: internal.public.disconnectExpired,
+        config: { debounceMs: 1000 },
       });
     }
 
