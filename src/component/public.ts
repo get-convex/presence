@@ -4,11 +4,8 @@
 // client-side React component and ../client/index.ts for the Presence class that
 // can be used in Convex server functions.
 //
-// Session timeouts are enforced by a single deployment-wide worker rather than
-// per-session scheduled functions. Each heartbeat just bumps a deadline on its
-// session row; a singleton @convex-dev/batch-worker loop sleeps until the
-// earliest deadline in the deployment and disconnects sessions that pass it
-// (see expiredSessions and disconnectExpired below).
+// Heartbeats bump a disconnect deadline for a session and a background
+// batch-worker loop disconnects sessions that pass their deadline.
 
 import { v } from "convex/values";
 import { ping, vBatchQueryArgs, vBatchResult } from "@convex-dev/batch-worker";
@@ -23,8 +20,7 @@ import {
 import { components, internal } from "./_generated/api.js";
 import type { Doc } from "./_generated/dataModel.js";
 
-// Max sessions to disconnect per worker transaction, bounding transaction
-// size during mass expiry (e.g., a large room dropping offline at once).
+// Max sessions to disconnect per worker transaction.
 const DISCONNECT_BATCH = 64;
 
 // Longest the worker loop sleeps between checks while any session exists.
@@ -50,12 +46,10 @@ export const heartbeat = mutation({
     sessionToken: v.string(),
   }),
   handler: async (ctx, { roomId, userId, sessionId, interval = 10000 }) => {
-    // A session times out if no heartbeat arrives within 2.5x the heartbeat
-    // period. Bumping this deadline is the entire keepalive mechanism: the
-    // disconnect worker watches the earliest deadline in the deployment.
+    // Time out session if no heartbeat again within 2.5x interval.
     const deadline = Date.now() + interval * 2.5;
 
-    // Update or create session, minting the token used to disconnect it.
+    // Create session or bump deadline.
     let sessionToken: string;
     const session = await ctx.db
       .query("sessions")
@@ -70,13 +64,10 @@ export const heartbeat = mutation({
         deadline,
         token: sessionToken,
       });
-      // Wake the disconnect worker in case it's fully idle (it only goes
-      // idle when no sessions exist; while it's running this is a read-only
-      // no-op). Heartbeats for existing sessions never need this: they only
-      // push deadlines later, so the worker's next wakeup stays early enough.
+      // Wake disconnect worker if fully idle.
       await ping(ctx, components.batchWorker, {
         name: "disconnect",
-        workQuery: internal.public.expiredSessions,
+        workQuery: internal.public.getExpiredSessions,
         workerMutation: internal.public.disconnectExpired,
       });
     } else if (session.roomId !== roomId || session.userId !== userId) {
@@ -104,7 +95,7 @@ export const heartbeat = mutation({
       });
     }
 
-    // Generate token to list room presence.
+    // Fetch/generate token to list room presence.
     let roomToken: string;
     const roomTokenRecord = await ctx.db
       .query("roomTokens")
@@ -124,7 +115,7 @@ export const heartbeat = mutation({
 // Work query for the disconnect worker: reports whether any session is past
 // its deadline and, if not, when the earliest one could expire. The worker
 // mutation finds the expired sessions itself, so the batch carries no data.
-export const expiredSessions = internalQuery({
+export const getExpiredSessions = internalQuery({
   args: vBatchQueryArgs,
   returns: vBatchResult(v.object({})),
   handler: async (ctx) => {
