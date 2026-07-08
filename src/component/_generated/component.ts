@@ -27,7 +27,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       disconnect: FunctionReference<
         "mutation",
         "internal",
-        { scheduled?: boolean; sessionToken: string },
+        { sessionToken: string },
         null,
         Name
       >;

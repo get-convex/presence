@@ -74,8 +74,11 @@
       "default": "./dist/component/convex.config.js"
     }
   },
+  "dependencies": {
+    "@convex-dev/batch-worker": "^0.2.0"
+  },
   "peerDependencies": {
-    "convex": "^1.24.8",
+    "convex": "^1.36.1",
     "expo-crypto": ">=14.1.0",
     "react": "~18.3.1 || ^19.0.0",
     "react-dom": "~18.3.1 || ^19.0.0",
@@ -102,8 +105,8 @@
     "@typescript-eslint/parser": "^8.46.2",
     "@vitejs/plugin-react": "^5.1.0",
     "chokidar-cli": "3.0.0",
-    "convex": "1.35.1",
-    "convex-test": "^0.0.38",
+    "convex": "1.41.0",
+    "convex-test": "^0.0.51",
     "eslint": "^9.38.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",

@@ -3,10 +3,60 @@
 // See ../react/index.ts for the usePresence hook that maintains presence in a
 // client-side React component and ../client/index.ts for the Presence class that
 // can be used in Convex server functions.
+//
+// Session timeouts are enforced by a single deployment-wide worker rather than
+// per-session scheduled functions. Each heartbeat just bumps a deadline on its
+// session row; a singleton @convex-dev/batch-worker loop sleeps until the
+// earliest deadline in the deployment and disconnects sessions that pass it
+// (see expiredSessions and disconnectExpired below).
 
 import { v } from "convex/values";
-import { mutation, query, type QueryCtx } from "./_generated/server.js";
-import { api } from "./_generated/api.js";
+import {
+  ping,
+  vBatchQueryArgs,
+  vBatchResult,
+  vWorkerResult,
+} from "@convex-dev/batch-worker";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server.js";
+import { components, internal } from "./_generated/api.js";
+import type { Doc } from "./_generated/dataModel.js";
+
+// Name of the singleton batch-worker loop that disconnects timed-out sessions.
+const DISCONNECT_WORKER = "disconnect";
+
+// Max sessions to disconnect per worker transaction, bounding transaction
+// size during mass expiry (e.g., a large room dropping offline at once).
+const DISCONNECT_BATCH = 64;
+
+// Longest the worker loop sleeps between checks while any session exists.
+// Kept at or below the loop's pollIntervalMs so the loop sleeps in its
+// "running" state, where heartbeat pings are read-only no-ops: a burst of
+// room joins neither interrupts nor OCC-conflicts with the sleeping loop.
+// The cost is one cheap wakeup per 30s while the deployment has sessions,
+// and up to 30s of extra disconnect latency for a session whose deadline
+// lands earlier than all existing ones (only possible when a client shrinks
+// its heartbeat interval). With the default 10s interval, deadlines are at
+// most 25s out, so wakeups land exactly on the earliest deadline.
+const MAX_WORKER_SLEEP_MS = 30_000;
+
+// Wake the disconnect worker's loop. Called whenever a write could move the
+// deployment's earliest deadline *earlier* (a new session, or an interval
+// shrink): only then can the loop's scheduled wakeup be too late. Cheap and
+// idempotent: a read-only no-op while the loop is already running.
+async function pingDisconnectWorker(ctx: MutationCtx) {
+  await ping(ctx, components.batchWorker, {
+    name: DISCONNECT_WORKER,
+    workQuery: internal.public.expiredSessions,
+    workerMutation: internal.public.disconnectExpired,
+  });
+}
 
 export const heartbeat = mutation({
   args: {
@@ -20,17 +70,33 @@ export const heartbeat = mutation({
     sessionToken: v.string(),
   }),
   handler: async (ctx, { roomId, userId, sessionId, interval = 10000 }) => {
-    // Update or create session
+    // A session times out if no heartbeat arrives within 2.5x the heartbeat
+    // period. Bumping this deadline is the entire keepalive mechanism: the
+    // disconnect worker watches the earliest deadline in the deployment.
+    const deadline = Date.now() + interval * 2.5;
+
+    // Update or create session. Deadlines normally only move later, so an
+    // ordinary heartbeat doesn't need to wake the worker — its scheduled
+    // wakeup is already early enough. Only a brand-new session (the loop may
+    // be fully idle) or a deadline moving earlier (interval shrink) does.
+    let needsPing = false;
     const session = await ctx.db
       .query("sessions")
       .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
       .unique();
     if (!session) {
-      await ctx.db.insert("sessions", { roomId, userId, sessionId });
+      await ctx.db.insert("sessions", { roomId, userId, sessionId, deadline });
+      needsPing = true;
     } else if (session.roomId !== roomId || session.userId !== userId) {
       throw new Error(
         `sessionId ${sessionId} must be unique for a given room/user`,
       );
+    } else {
+      needsPing = deadline < session.deadline;
+      await ctx.db.patch("sessions", session._id, { deadline });
+    }
+    if (needsPing) {
+      await pingDisconnectWorker(ctx);
     }
 
     // Set user online if needed.
@@ -47,15 +113,6 @@ export const heartbeat = mutation({
         online: true,
         lastDisconnected: 0,
       });
-    }
-
-    // Cancel any existing timeout for session.
-    const existingTimeout = await ctx.db
-      .query("sessionTimeouts")
-      .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
-      .unique();
-    if (existingTimeout) {
-      await ctx.scheduler.cancel(existingTimeout.scheduledFunctionId);
     }
 
     // Generate token to list room presence.
@@ -84,27 +141,68 @@ export const heartbeat = mutation({
       await ctx.db.insert("sessionTokens", { sessionId, token: sessionToken });
     }
 
-    // Schedule timeout heartbeat for 2.5x heartbeat period.
-    const timeout = await ctx.scheduler.runAfter(
-      interval * 2.5,
-      api.public.disconnect,
-      {
-        sessionToken: sessionToken,
-        scheduled: true,
-      },
-    );
-    if (existingTimeout) {
-      await ctx.db.patch("sessionTimeouts", existingTimeout._id, {
-        scheduledFunctionId: timeout,
-      });
-    } else {
-      await ctx.db.insert("sessionTimeouts", {
-        sessionId,
-        scheduledFunctionId: timeout,
-      });
+    return { roomToken, sessionToken };
+  },
+});
+
+// Work query for the disconnect worker: returns the next batch of expired
+// sessions, or idle with a hint for when the earliest deadline could expire.
+export const expiredSessions = internalQuery({
+  args: vBatchQueryArgs,
+  returns: vBatchResult(v.object({ sessionIds: v.array(v.id("sessions")) })),
+  handler: async (ctx) => {
+    const now = Date.now();
+    const expired = await ctx.db
+      .query("sessions")
+      .withIndex("deadline", (q) => q.lte("deadline", now))
+      .take(DISCONNECT_BATCH);
+    if (expired.length > 0) {
+      return {
+        kind: "work" as const,
+        batch: { sessionIds: expired.map((session) => session._id) },
+      };
     }
 
-    return { roomToken, sessionToken: sessionToken };
+    // Nothing expired: sleep until the earliest deadline could pass (capped
+    // at MAX_WORKER_SLEEP_MS to stay in the ping-absorbing running state).
+    // With no sessions at all, go fully idle — the next session-creating
+    // heartbeat pings the loop awake. Since extend-only heartbeats don't
+    // ping, the loop wakes at most once per heartbeat interval (sleeping on
+    // a deadline that has since been extended) plus once per actual
+    // disconnect, no matter how many sessions exist.
+    const earliest = await ctx.db
+      .query("sessions")
+      .withIndex("deadline")
+      .order("asc")
+      .first();
+    return {
+      kind: "idle" as const,
+      // Skip the post-work cooldown polling: go straight back to sleep.
+      cooldownMs: 0,
+      pollIntervalMs: MAX_WORKER_SLEEP_MS,
+      timeoutMs: earliest
+        ? Math.min(earliest.deadline - now, MAX_WORKER_SLEEP_MS)
+        : undefined,
+    };
+  },
+});
+
+// Worker mutation for the disconnect worker: disconnects a batch of sessions
+// found by expiredSessions. The batch comes from a snapshot read and may be
+// stale, so re-validate every session against current state — it may have
+// heartbeated (deadline extended) or disconnected since.
+export const disconnectExpired = internalMutation({
+  args: { sessionIds: v.array(v.id("sessions")) },
+  returns: vWorkerResult,
+  handler: async (ctx, { sessionIds }) => {
+    for (const sessionId of sessionIds) {
+      const session = await ctx.db.get("sessions", sessionId);
+      if (!session || session.deadline > Date.now()) {
+        continue; // already disconnected, or a heartbeat raced the snapshot
+      }
+      await disconnectSession(ctx, session);
+    }
+    return null; // rerun immediately; the loop re-queries for more
   },
 });
 
@@ -238,24 +336,22 @@ export const listUser = query({
 export const disconnect = mutation({
   args: {
     sessionToken: v.string(),
-    scheduled: v.optional(v.boolean()),
   },
   returns: v.null(),
-  handler: async (ctx, { sessionToken, scheduled }) => {
+  handler: async (ctx, { sessionToken }) => {
     const sessionTokenRecord = await ctx.db
       .query("sessionTokens")
       .withIndex("token", (q) => q.eq("token", sessionToken))
       .unique();
     if (!sessionTokenRecord) {
-      return;
+      // Session already timed out or disconnected; disconnect is idempotent.
+      return null;
     }
-    await ctx.db.delete("sessionTokens", sessionTokenRecord._id);
-    const { sessionId } = sessionTokenRecord;
-
-    // Remove the session
     const session = await ctx.db
       .query("sessions")
-      .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
+      .withIndex("sessionId", (q) =>
+        q.eq("sessionId", sessionTokenRecord.sessionId),
+      )
       .unique();
     if (!session) {
       console.error(
@@ -263,47 +359,11 @@ export const disconnect = mutation({
         sessionToken,
         "without a session",
       );
-      return;
+      await ctx.db.delete("sessionTokens", sessionTokenRecord._id);
+      return null;
     }
-
-    const { roomId, userId } = session;
-    await ctx.db.delete("sessions", session._id);
-
-    const userPresence = await getUserPresence(ctx, userId, roomId);
-    if (!userPresence) {
-      console.error(
-        "Should not have a session token",
-        sessionToken,
-        "without a user presence",
-      );
-      return;
-    }
-
-    // Mark user offline if they don't have any remaining sessions.
-    const remainingSessions = await ctx.db
-      .query("sessions")
-      .withIndex("room_user_session", (q) =>
-        q.eq("roomId", roomId).eq("userId", userId),
-      )
-      .collect();
-    if (userPresence.online && remainingSessions.length === 0) {
-      await ctx.db.patch("presence", userPresence._id, {
-        online: false,
-        lastDisconnected: Date.now(),
-      });
-    }
-
-    // Cancel timeout for this session.
-    const timeout = await ctx.db
-      .query("sessionTimeouts")
-      .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
-      .unique();
-    if (timeout) {
-      if (!scheduled) {
-        await ctx.scheduler.cancel(timeout.scheduledFunctionId);
-      }
-      await ctx.db.delete("sessionTimeouts", timeout._id);
-    }
+    await disconnectSession(ctx, session);
+    return null;
   },
 });
 
@@ -339,7 +399,9 @@ export const removeRoomUser = mutation({
     }
     await ctx.db.delete("presence", userPresence._id);
 
-    // Remove the user from all sessions.
+    // Remove the user from all sessions. No timeout bookkeeping needed: if
+    // one of these held the earliest deadline, the worker wakes at the stale
+    // time, finds nothing expired, and re-schedules.
     const sessions = await ctx.db
       .query("sessions")
       .withIndex("room_user_session", (q) =>
@@ -354,14 +416,6 @@ export const removeRoomUser = mutation({
         .unique();
       if (sessionToken) {
         await ctx.db.delete("sessionTokens", sessionToken._id);
-      }
-      const timeout = await ctx.db
-        .query("sessionTimeouts")
-        .withIndex("sessionId", (q) => q.eq("sessionId", session.sessionId))
-        .unique();
-      if (timeout) {
-        await ctx.scheduler.cancel(timeout.scheduledFunctionId);
-        await ctx.db.delete("sessionTimeouts", timeout._id);
       }
     }
     return null;
@@ -397,15 +451,6 @@ export const removeRoom = mutation({
       if (sessionToken) {
         await ctx.db.delete("sessionTokens", sessionToken._id);
       }
-
-      const timeout = await ctx.db
-        .query("sessionTimeouts")
-        .withIndex("sessionId", (q) => q.eq("sessionId", session.sessionId))
-        .unique();
-      if (timeout) {
-        await ctx.scheduler.cancel(timeout.scheduledFunctionId);
-        await ctx.db.delete("sessionTimeouts", timeout._id);
-      }
     }
 
     const roomToken = await ctx.db
@@ -433,6 +478,42 @@ async function getUserPresence(ctx: QueryCtx, userId: string, roomId: string) {
       )
       .unique())
   );
+}
+
+// Disconnect a session, marking its user offline if it was their last session
+// in the room. Shared by graceful disconnects and worker timeouts.
+async function disconnectSession(ctx: MutationCtx, session: Doc<"sessions">) {
+  const { roomId, userId, sessionId } = session;
+  await ctx.db.delete("sessions", session._id);
+
+  const sessionToken = await ctx.db
+    .query("sessionTokens")
+    .withIndex("sessionId", (q) => q.eq("sessionId", sessionId))
+    .unique();
+  if (sessionToken) {
+    await ctx.db.delete("sessionTokens", sessionToken._id);
+  }
+
+  // Mark user offline if they don't have any remaining sessions.
+  const remainingSession = await ctx.db
+    .query("sessions")
+    .withIndex("room_user_session", (q) =>
+      q.eq("roomId", roomId).eq("userId", userId),
+    )
+    .first();
+  if (!remainingSession) {
+    const userPresence = await getUserPresence(ctx, userId, roomId);
+    if (!userPresence) {
+      console.error("Session", sessionId, "had no presence record");
+      return;
+    }
+    if (userPresence.online) {
+      await ctx.db.patch("presence", userPresence._id, {
+        online: false,
+        lastDisconnected: Date.now(),
+      });
+    }
+  }
 }
 
 // TODO: rotate the room tokens
