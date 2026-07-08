@@ -21,13 +21,9 @@ export default defineSchema({
     // Time by which another heartbeat must arrive before the disconnect
     // worker disconnects the session. Bumped by every heartbeat.
     deadline: v.number(),
-    // Temporary token required to disconnect the session, minted by and
-    // returned from heartbeat.
-    token: v.string(),
   })
     .index("room_user_session", ["roomId", "userId", "sessionId"])
     .index("sessionId", ["sessionId"])
-    .index("token", ["token"])
     // Wait queue for the disconnect worker: earliest deadline first.
     .index("deadline", ["deadline"]),
 
@@ -39,4 +35,12 @@ export default defineSchema({
   })
     .index("token", ["token"])
     .index("room", ["roomId"]),
+
+  // Temporary tokens to disconnect individual sessions.
+  sessionTokens: defineTable({
+    token: v.string(),
+    sessionId: v.string(),
+  })
+    .index("token", ["token"])
+    .index("sessionId", ["sessionId"]),
 });
