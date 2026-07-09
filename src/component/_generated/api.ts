@@ -10,7 +10,6 @@
 
 import type * as public_ from "../public.js";
 
-import type { ComponentApi as BatchWorkerApi } from "@convex-dev/batch-worker/_generated/component.js";
 import type {
   ApiFromModules,
   FilterApi,
@@ -49,5 +48,5 @@ export const internal: FilterApi<
 > = anyApi as any;
 
 export const components = componentsGeneric() as unknown as {
-  batchWorker: BatchWorkerApi;
+  batchWorker: import("@convex-dev/batch-worker/_generated/component.js").ComponentApi<"batchWorker">;
 };

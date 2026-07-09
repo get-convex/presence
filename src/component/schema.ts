@@ -19,12 +19,15 @@ export default defineSchema({
     userId: v.string(),
     sessionId: v.string(),
     // Time by which another heartbeat must arrive before the disconnect
-    // worker disconnects the session. Bumped by every heartbeat.
-    deadline: v.number(),
+    // worker disconnects the session. Optional so existing deployments
+    // upgrade without a migration: sessions written by the previous
+    // implementation lack it and are assigned one by the worker.
+    deadline: v.optional(v.number()),
   })
     .index("room_user_session", ["roomId", "userId", "sessionId"])
     .index("sessionId", ["sessionId"])
-    // Wait queue for the disconnect worker: earliest deadline first.
+    // Wait queue for the disconnect worker: earliest deadline first, with
+    // legacy deadline-less sessions sorting to the front.
     .index("deadline", ["deadline"]),
 
   // Temporary tokens to list presence in a room. These allow all members to
@@ -43,4 +46,13 @@ export default defineSchema({
   })
     .index("token", ["token"])
     .index("sessionId", ["sessionId"]),
+
+  // Scheduled disconnects from the previous implementation, which the
+  // disconnect worker replaces. Unused: kept so existing deployments upgrade
+  // without a migration. Rows are inert and this table can be dropped once
+  // all pre-upgrade deployments are gone.
+  sessionTimeouts: defineTable({
+    sessionId: v.string(),
+    scheduledFunctionId: v.id("_scheduled_functions"),
+  }).index("sessionId", ["sessionId"]),
 });

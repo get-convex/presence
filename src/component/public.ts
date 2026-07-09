@@ -53,13 +53,11 @@ export const heartbeat = mutation({
       await ctx.db.patch("sessions", session._id, { deadline });
     }
 
-    // Wake the disconnect worker if this deadline may be earlier than the one
-    // it's sleeping until: a new session while the worker may be fully idle,
-    // or an existing session shrinking its deadline. Debouncing bounds a
-    // burst of joins to one worker wakeup per second.
+    // Wake disconnect worker if potentially needed. Legacy sessions without
+    // a deadline ping like new sessions, starting the worker post-upgrade.
     // TODO: update batch-worker to ignore pings that wouldn't move its wakeup
     // earlier, skipping the per-debounce-window wakeup entirely.
-    if (!session || deadline < session.deadline) {
+    if (!session || deadline < (session.deadline ?? Infinity)) {
       await ping(ctx, components.batchWorker, {
         name: "disconnect",
         workQuery: internal.public.getExpiredSessions,
@@ -84,7 +82,7 @@ export const heartbeat = mutation({
       });
     }
 
-    // Fetch/generate token to list room presence.
+    // Generate token to list room presence.
     let roomToken: string;
     const roomTokenRecord = await ctx.db
       .query("roomTokens")
@@ -97,7 +95,7 @@ export const heartbeat = mutation({
       await ctx.db.insert("roomTokens", { roomId, token: roomToken });
     }
 
-    // Fetch/generate token to disconnect session.
+    // Generate token to disconnect session.
     let sessionToken: string;
     const sessionTokenRecord = await ctx.db
       .query("sessionTokens")
@@ -114,13 +112,13 @@ export const heartbeat = mutation({
   },
 });
 
-// Work query for the disconnect worker: the next batch of expired sessions,
-// or idle with a hint for when the earliest deadline could expire.
+// Fetch expired sessions for disconnect BatchWorker.
 export const getExpiredSessions = internalQuery({
   args: vBatchQueryArgs,
   returns: vBatchResult(v.object({ sessionIds: v.array(v.id("sessions")) })),
   handler: async (ctx) => {
     const now = Date.now();
+    // Return work if it exists.
     const expired = await ctx.db
       .query("sessions")
       .withIndex("deadline", (q) => q.lte("deadline", now))
@@ -132,8 +130,9 @@ export const getExpiredSessions = internalQuery({
       };
     }
 
-    // Nothing expired: sleep until the earliest deadline could pass. With no
-    // sessions at all, go fully idle until a ping.
+    // Tell worker to sleep until next deadline. Legacy deadline-less
+    // sessions sort first in the index, so they always land in the expired
+    // range above and `earliest` here has a deadline.
     const earliest = await ctx.db
       .query("sessions")
       .withIndex("deadline")
@@ -141,25 +140,34 @@ export const getExpiredSessions = internalQuery({
       .first();
     return {
       kind: "idle" as const,
-      timeoutMs: earliest ? earliest.deadline - now : undefined,
+      timeoutMs:
+        earliest?.deadline !== undefined ? earliest.deadline - now : undefined,
     };
   },
 });
 
-// Worker mutation for the disconnect worker: disconnects a batch of expired
-// sessions. The batch comes from a snapshot query, so treat it as stale and
-// skip sessions that have since heartbeated or disconnected.
+// Process disconnections passed in from BatchWorker. The batch comes from a
+// snapshot query, so skip sessions that have since heartbeated or
+// disconnected. Returning nothing makes the loop rerun immediately to check
+// for more work.
 export const disconnectExpired = internalMutation({
   args: { sessionIds: v.array(v.id("sessions")) },
-  returns: v.null(),
   handler: async (ctx, { sessionIds }) => {
     for (const sessionId of sessionIds) {
       const session = await ctx.db.get("sessions", sessionId);
-      if (session && session.deadline <= Date.now()) {
+      if (!session) {
+        continue;
+      }
+      if (session.deadline === undefined) {
+        // Legacy pre-worker session: give it one default heartbeat period to
+        // check in rather than assuming it's gone.
+        await ctx.db.patch("sessions", session._id, {
+          deadline: Date.now() + 10000 * 2.5,
+        });
+      } else if (session.deadline <= Date.now()) {
         await disconnectSession(ctx, session);
       }
     }
-    return null; // Rerun immediately; the loop re-queries for more.
   },
 });
 
@@ -293,10 +301,15 @@ export const listUser = query({
 export const disconnect = mutation({
   args: {
     sessionToken: v.string(),
+    // Set by timeouts scheduled by the previous implementation. The worker
+    // owns timeouts now, so these are ignored.
+    scheduled: v.optional(v.boolean()),
   },
   returns: v.null(),
-  handler: async (ctx, { sessionToken }) => {
-    // Idempotent: the session may already have timed out or disconnected.
+  handler: async (ctx, { sessionToken, scheduled }) => {
+    if (scheduled) {
+      return null;
+    }
     const sessionTokenRecord = await ctx.db
       .query("sessionTokens")
       .withIndex("token", (q) => q.eq("token", sessionToken))
@@ -352,9 +365,6 @@ export const removeRoomUser = mutation({
     }
     await ctx.db.delete("presence", userPresence._id);
 
-    // Remove the user from all sessions. No timeout bookkeeping needed: if
-    // one of these held the earliest deadline, the worker wakes at the stale
-    // time, finds nothing expired, and re-schedules.
     const sessions = await ctx.db
       .query("sessions")
       .withIndex("room_user_session", (q) =>
@@ -418,7 +428,6 @@ async function getUserPresence(ctx: QueryCtx, userId: string, roomId: string) {
   );
 }
 
-// Delete a session and its disconnect token.
 async function deleteSessionAndToken(
   ctx: MutationCtx,
   session: Doc<"sessions">,
