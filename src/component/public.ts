@@ -115,7 +115,14 @@ export const heartbeat = mutation({
 // Fetch expired sessions for disconnect BatchWorker.
 export const getExpiredSessions = internalQuery({
   args: vBatchQueryArgs,
-  returns: vBatchResult(v.object({ sessionIds: v.array(v.id("sessions")) })),
+  returns: vBatchResult(
+    v.object({
+      sessionIds: v.array(v.id("sessions")),
+      // The deadline after this batch, if it drains all expired sessions.
+      // The worker sleeps until then, ignoring pings.
+      nextDeadline: v.optional(v.number()),
+    }),
+  ),
   handler: async (ctx) => {
     const now = Date.now();
     // Return work if it exists.
@@ -124,9 +131,22 @@ export const getExpiredSessions = internalQuery({
       .withIndex("deadline", (q) => q.lte("deadline", now))
       .take(DISCONNECT_BATCH);
     if (expired.length > 0) {
+      // If this batch drains everything currently expired, no deadline can
+      // beat the next upcoming one, so tell the worker when to check next.
+      let nextDeadline: number | undefined;
+      if (expired.length < DISCONNECT_BATCH) {
+        const upcoming = await ctx.db
+          .query("sessions")
+          .withIndex("deadline", (q) => q.gt("deadline", now))
+          .first();
+        nextDeadline = upcoming?.deadline;
+      }
       return {
         kind: "work" as const,
-        batch: { sessionIds: expired.map((session) => session._id) },
+        batch: {
+          sessionIds: expired.map((session) => session._id),
+          nextDeadline,
+        },
       };
     }
 
@@ -148,11 +168,15 @@ export const getExpiredSessions = internalQuery({
 
 // Process disconnections passed in from BatchWorker. The batch comes from a
 // snapshot query, so skip sessions that have since heartbeated or
-// disconnected. Returning nothing makes the loop rerun immediately to check
-// for more work.
+// disconnected. Returning a debounce makes the worker sleep until the next
+// deadline, ignoring pings; returning nothing makes it rerun immediately.
 export const disconnectExpired = internalMutation({
-  args: { sessionIds: v.array(v.id("sessions")) },
-  handler: async (ctx, { sessionIds }) => {
+  args: {
+    sessionIds: v.array(v.id("sessions")),
+    nextDeadline: v.optional(v.number()),
+  },
+  handler: async (ctx, { sessionIds, nextDeadline }) => {
+    let adoptedLegacy = false;
     for (const sessionId of sessionIds) {
       const session = await ctx.db.get("sessions", sessionId);
       if (!session) {
@@ -164,9 +188,15 @@ export const disconnectExpired = internalMutation({
         await ctx.db.patch("sessions", session._id, {
           deadline: Date.now() + 10000 * 2.5,
         });
+        adoptedLegacy = true;
       } else if (session.deadline <= Date.now()) {
         await disconnectSession(ctx, session);
       }
+    }
+    // Adopted legacy deadlines may fall before nextDeadline; rerun instead of
+    // oversleeping so the query recomputes with them included.
+    if (nextDeadline !== undefined && !adoptedLegacy) {
+      return { debounceMs: Math.max(0, nextDeadline - Date.now()) };
     }
   },
 });

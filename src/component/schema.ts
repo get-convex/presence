@@ -47,12 +47,7 @@ export default defineSchema({
     .index("token", ["token"])
     .index("sessionId", ["sessionId"]),
 
-  // Scheduled disconnects from the previous implementation, which the
-  // disconnect worker replaces. Unused: kept so existing deployments upgrade
-  // without a migration. Rows are inert and this table can be dropped once
-  // all pre-upgrade deployments are gone.
-  sessionTimeouts: defineTable({
-    sessionId: v.string(),
-    scheduledFunctionId: v.id("_scheduled_functions"),
-  }).index("sessionId", ["sessionId"]),
+  // The previous implementation's sessionTimeouts table is intentionally
+  // absent: existing deployments keep it (undeclared tables persist) and its
+  // rows are inert once the scheduled disconnects they track have fired.
 });
