@@ -153,6 +153,47 @@ describe("presence client", () => {
     expect(users.every((u) => !u.online)).toBe(true);
   });
 
+  test("an earlier deadline interrupts the wait after a completed batch", async () => {
+    const t = initConvexTest();
+    // At t=1s, short expires while long remains alive until t=100s. Before
+    // this fix, the worker debounced directly to long's deadline and ignored
+    // pings for sessions created during that wait.
+    await t.mutation(testApi.heartbeat, {
+      roomId: "room1",
+      userId: "short",
+      sessionId: "short",
+      interval: 400,
+    });
+    await t.mutation(testApi.heartbeat, {
+      roomId: "room1",
+      userId: "long",
+      sessionId: "long",
+      interval: 40000,
+    });
+
+    vi.advanceTimersByTime(1000);
+    await t.finishInProgressScheduledFunctions();
+
+    await t.mutation(testApi.heartbeat, {
+      roomId: "room1",
+      userId: "new-short",
+      sessionId: "new-short",
+      interval: 400,
+    });
+    // Run the immediate post-batch query, then wake at new-short's deadline.
+    vi.advanceTimersByTime(0);
+    await t.finishInProgressScheduledFunctions();
+    vi.advanceTimersByTime(1000);
+    await t.finishInProgressScheduledFunctions();
+
+    expect(await t.query(testApi.listRoom, { roomId: "room1" })).toMatchObject([
+      { userId: "long", online: true },
+      { userId: "new-short", online: false },
+      { userId: "short", online: false },
+    ]);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+  });
+
   test("list requires a valid room token", async () => {
     const t = initConvexTest();
     await t.mutation(testApi.heartbeat, hb("room1", "user1", "tab1"));

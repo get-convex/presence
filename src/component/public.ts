@@ -118,9 +118,6 @@ export const getExpiredSessions = internalQuery({
   returns: vBatchResult(
     v.object({
       sessionIds: v.array(v.id("sessions")),
-      // The deadline after this batch, if it drains all expired sessions.
-      // The worker sleeps until then, ignoring pings.
-      nextDeadline: v.optional(v.number()),
     }),
   ),
   handler: async (ctx) => {
@@ -131,21 +128,10 @@ export const getExpiredSessions = internalQuery({
       .withIndex("deadline", (q) => q.lte("deadline", now))
       .take(DISCONNECT_BATCH);
     if (expired.length > 0) {
-      // If this batch drains everything currently expired, no deadline can
-      // beat the next upcoming one, so tell the worker when to check next.
-      let nextDeadline: number | undefined;
-      if (expired.length < DISCONNECT_BATCH) {
-        const upcoming = await ctx.db
-          .query("sessions")
-          .withIndex("deadline", (q) => q.gt("deadline", now))
-          .first();
-        nextDeadline = upcoming?.deadline;
-      }
       return {
         kind: "work" as const,
         batch: {
           sessionIds: expired.map((session) => session._id),
-          nextDeadline,
         },
       };
     }
@@ -160,6 +146,9 @@ export const getExpiredSessions = internalQuery({
       .first();
     return {
       kind: "idle" as const,
+      // Skip BatchWorker's default cooldown: session deadlines already tell
+      // us exactly when to wake, and pings can interrupt this idle wait.
+      cooldownMs: 0,
       timeoutMs:
         earliest?.deadline !== undefined ? earliest.deadline - now : undefined,
     };
@@ -167,16 +156,14 @@ export const getExpiredSessions = internalQuery({
 });
 
 // Process disconnections passed in from BatchWorker. The batch comes from a
-// snapshot query, so skip sessions that have since heartbeated or
-// disconnected. Returning a debounce makes the worker sleep until the next
-// deadline, ignoring pings; returning nothing makes it rerun immediately.
+// snapshot query, so skip sessions that have since heartbeated or disconnected.
+// Rerun immediately afterward so BatchWorker can establish an OCC dependency
+// before entering its interruptible idle wait.
 export const disconnectExpired = internalMutation({
   args: {
     sessionIds: v.array(v.id("sessions")),
-    nextDeadline: v.optional(v.number()),
   },
-  handler: async (ctx, { sessionIds, nextDeadline }) => {
-    let adoptedLegacy = false;
+  handler: async (ctx, { sessionIds }) => {
     for (const sessionId of sessionIds) {
       const session = await ctx.db.get("sessions", sessionId);
       if (!session) {
@@ -188,15 +175,9 @@ export const disconnectExpired = internalMutation({
         await ctx.db.patch("sessions", session._id, {
           deadline: Date.now() + 10000 * 2.5,
         });
-        adoptedLegacy = true;
       } else if (session.deadline <= Date.now()) {
         await disconnectSession(ctx, session);
       }
-    }
-    // Adopted legacy deadlines may fall before nextDeadline; rerun instead of
-    // oversleeping so the query recomputes with them included.
-    if (nextDeadline !== undefined && !adoptedLegacy) {
-      return { debounceMs: Math.max(0, nextDeadline - Date.now()) };
     }
   },
 });
@@ -337,9 +318,6 @@ export const disconnect = mutation({
   },
   returns: v.null(),
   handler: async (ctx, { sessionToken, scheduled }) => {
-    if (scheduled) {
-      return null;
-    }
     const sessionTokenRecord = await ctx.db
       .query("sessionTokens")
       .withIndex("token", (q) => q.eq("token", sessionToken))
@@ -353,6 +331,12 @@ export const disconnect = mutation({
         q.eq("sessionId", sessionTokenRecord.sessionId),
       )
       .unique();
+    // Preserve legacy scheduled disconnects for sessions that haven't
+    // heartbeated since upgrading. Once a heartbeat assigns a deadline, the
+    // worker owns the timeout and the old scheduled call is stale.
+    if (scheduled && session?.deadline !== undefined) {
+      return null;
+    }
     if (session) {
       await disconnectSession(ctx, session);
     } else {
