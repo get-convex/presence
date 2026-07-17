@@ -39,21 +39,22 @@ export function usePresence(
   const convex = useConvex();
   const baseUrl = convexUrl ?? convex.url;
 
-  const [sessionId, setSessionId] = useState(() => Crypto.randomUUID());
+  // Keep one stable ID for this hook instance. Including the room and user
+  // rotates the server session synchronously when either identity changes,
+  // without creating a throwaway session during the initial effect.
+  const [instanceId] = useState(() => Crypto.randomUUID());
+  const sessionId = JSON.stringify([instanceId, roomId, userId]);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [roomToken, setRoomToken] = useState<string | null>(null);
 
   const sessionTokenRef = useRef<string | null>(null);
+  // A newer effect may adopt the same session when only `interval` changes.
+  const activeSessionIdRef = useRef<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const heartbeat = useSingleFlight(useMutation(presence.heartbeat));
-  const disconnect = useSingleFlight(useMutation(presence.disconnect));
-
-  const sendHeartbeat = useCallback(async () => {
-    const result = await heartbeat({ roomId, userId, sessionId, interval });
-    setRoomToken(result.roomToken);
-    setSessionToken(result.sessionToken);
-  }, [heartbeat, interval, roomId, sessionId, userId]);
+  // Every distinct token must be disconnected; useSingleFlight may drop calls.
+  const disconnect = useMutation(presence.disconnect);
 
   const fireAndForgetDisconnect = useCallback(
     (token: string) => {
@@ -71,15 +72,10 @@ export function usePresence(
 
   // Reset session when roomId/userId changes
   useEffect(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-
     if (sessionTokenRef.current) {
       void disconnect({ sessionToken: sessionTokenRef.current });
     }
-
-    setSessionId(Crypto.randomUUID());
+    sessionTokenRef.current = null;
     setSessionToken(null);
     setRoomToken(null);
   }, [roomId, userId, disconnect]);
@@ -89,6 +85,29 @@ export function usePresence(
   }, [sessionToken]);
 
   useEffect(() => {
+    let canceled = false;
+    activeSessionIdRef.current = sessionId;
+
+    const disconnectIfOrphaned = (token: string) => {
+      queueMicrotask(() => {
+        if (activeSessionIdRef.current !== sessionId) {
+          fireAndForgetDisconnect(token);
+        }
+      });
+    };
+
+    const sendHeartbeat = async () => {
+      const result = await heartbeat({ roomId, userId, sessionId, interval });
+      if (canceled) {
+        // Cleanup had no token for this in-flight heartbeat. Disconnect its
+        // session unless a newer effect now owns that same session.
+        disconnectIfOrphaned(result.sessionToken);
+        return;
+      }
+      setRoomToken(result.roomToken);
+      setSessionToken(result.sessionToken);
+    };
+
     // initial heartbeat + interval
     void sendHeartbeat();
     intervalRef.current = setInterval(sendHeartbeat, interval);
@@ -106,17 +125,21 @@ export function usePresence(
     });
 
     return () => {
+      canceled = true;
+      activeSessionIdRef.current = null;
+      const token = sessionTokenRef.current;
+
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
 
       subscription.remove();
 
-      if (sessionTokenRef.current) {
-        fireAndForgetDisconnect(sessionTokenRef.current);
+      if (token) {
+        disconnectIfOrphaned(token);
       }
     };
-  }, [roomId, userId, interval, sendHeartbeat, fireAndForgetDisconnect]);
+  }, [roomId, userId, sessionId, interval, heartbeat, fireAndForgetDisconnect]);
 
   const state = useQuery(presence.list, roomToken ? { roomToken } : "skip");
 
