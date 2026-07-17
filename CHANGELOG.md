@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.4.0-alpha.1
+
 ## 0.4.0-alpha.0
 
 - Replaces per-session scheduled disconnects with a deployment-wide batch
