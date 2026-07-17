@@ -39,9 +39,8 @@ export function usePresence(
   const convex = useConvex();
   const baseUrl = convexUrl ?? convex.url;
 
-  // Keep one stable ID for this hook instance. Including the room and user
-  // rotates the server session synchronously when either identity changes,
-  // without creating a throwaway session during the initial effect.
+  // Each hook instance has a stable ID. Including the room and user gives each
+  // presence identity a distinct server session.
   const [instanceId] = useState(() => Crypto.randomUUID());
   const sessionId = JSON.stringify([instanceId, roomId, userId]);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -98,8 +97,6 @@ export function usePresence(
     const sendHeartbeat = async () => {
       const result = await heartbeat({ roomId, userId, sessionId, interval });
       if (canceled) {
-        // Cleanup had no token for this in-flight heartbeat. Disconnect its
-        // session unless a newer effect now owns that same session.
         disconnectIfOrphaned(result.sessionToken);
         return;
       }
