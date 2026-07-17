@@ -76,14 +76,17 @@ export default function usePresence(
   interval: number = 10000,
   convexUrl?: string,
 ): PresenceState[] | undefined {
-  const hasMounted = useRef(false);
   const convex = useConvex();
   const baseUrl = convexUrl ?? convex.url;
 
-  // Each session (browser tab etc) has a unique ID and a token used to disconnect it.
-  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
+  // Each hook instance has a stable ID. Including the room and user gives each
+  // presence identity a distinct server session.
+  const [instanceId] = useState(() => crypto.randomUUID());
+  const sessionId = JSON.stringify([instanceId, roomId, userId]);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const sessionTokenRef = useRef<string | null>(null);
+  // A newer effect may adopt the same session when only `interval` changes.
+  const activeSessionIdRef = useRef<string | null>(null);
 
   const [roomToken, setRoomToken] = useState<string | null>(null);
   const roomTokenRef = useRef<string | null>(null);
@@ -91,21 +94,15 @@ export default function usePresence(
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const heartbeat = useSingleFlight(useMutation(presence.heartbeat));
-  const disconnect = useSingleFlight(useMutation(presence.disconnect));
+  const disconnect = useMutation(presence.disconnect);
 
   useEffect(() => {
-    // Reset session state when roomId or userId changes.
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    if (sessionTokenRef.current) {
-      void disconnect({ sessionToken: sessionTokenRef.current });
-    }
-    setSessionId(crypto.randomUUID());
+    // The heartbeat effect cleans up the old session.
+    sessionTokenRef.current = null;
+    roomTokenRef.current = null;
     setSessionToken(null);
     setRoomToken(null);
-  }, [roomId, userId, disconnect]);
+  }, [roomId, userId]);
 
   useEffect(() => {
     // Update refs whenever tokens change.
@@ -114,9 +111,24 @@ export default function usePresence(
   }, [sessionToken, roomToken]);
 
   useEffect(() => {
+    let canceled = false;
+    activeSessionIdRef.current = sessionId;
+
+    const disconnectIfOrphaned = (token: string) => {
+      queueMicrotask(() => {
+        if (activeSessionIdRef.current !== sessionId) {
+          void disconnect({ sessionToken: token });
+        }
+      });
+    };
+
     // Periodic heartbeats.
     const sendHeartbeat = async () => {
       const result = await heartbeat({ roomId, userId, sessionId, interval });
+      if (canceled) {
+        disconnectIfOrphaned(result.sessionToken);
+        return;
+      }
       setRoomToken(result.roomToken);
       setSessionToken(result.sessionToken);
     };
@@ -174,23 +186,19 @@ export default function usePresence(
 
     // Cleanup.
     return () => {
+      canceled = true;
+      activeSessionIdRef.current = null;
+      const token = sessionTokenRef.current;
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
       document.removeEventListener("visibilitychange", wrappedHandleVisibility);
       window.removeEventListener("beforeunload", handleUnload);
-      // Don't disconnect on first render in strict mode.
-      if (hasMounted.current) {
-        if (sessionTokenRef.current) {
-          void disconnect({ sessionToken: sessionTokenRef.current });
-        }
+      if (token) {
+        disconnectIfOrphaned(token);
       }
     };
   }, [heartbeat, disconnect, roomId, userId, baseUrl, interval, sessionId]);
-
-  useEffect(() => {
-    hasMounted.current = true;
-  }, []);
 
   const state = useQuery(presence.list, roomToken ? { roomToken } : "skip");
   return useMemo(
