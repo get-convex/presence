@@ -55,8 +55,6 @@ export const heartbeat = mutation({
 
     // Wake disconnect worker if potentially needed. Legacy sessions without
     // a deadline ping like new sessions, starting the worker post-upgrade.
-    // TODO: update batch-worker to ignore pings that wouldn't move its wakeup
-    // earlier, skipping the per-debounce-window wakeup entirely.
     if (!session || deadline < (session.deadline ?? Infinity)) {
       await ping(ctx, components.batchWorker, {
         name: "disconnect",
