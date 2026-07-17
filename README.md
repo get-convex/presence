@@ -9,8 +9,10 @@ list of users in a "room" including their status for when they were last online.
 
 It can be tricky to implement presence efficiently, without any polling and
 without re-running queries every time a user sends a heartbeat message. This
-component implements presence via Convex scheduled functions such that clients
-only receive updates when a user joins or leaves the room.
+component implements presence via a single deployment-wide worker (a
+[batch-worker](https://github.com/get-convex/batch-worker) loop) that sleeps
+until the next session timeout is due, such that clients only receive updates
+when a user joins or leaves the room and heartbeats don't schedule any work.
 
 The most common use case for this component is via the usePresence hook, which
 takes care of sending heartbeart messages to the server and gracefully
