@@ -53,7 +53,6 @@ export function usePresence(
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const heartbeat = useSingleFlight(useMutation(presence.heartbeat));
-  // Every distinct token must be disconnected; useSingleFlight may drop calls.
   const disconnect = useMutation(presence.disconnect);
 
   const fireAndForgetDisconnect = useCallback(
