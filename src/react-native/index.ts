@@ -116,6 +116,10 @@ export function usePresence(
           fireAndForgetDisconnect(sessionTokenRef.current);
       } else if (state === "active") {
         void sendHeartbeat();
+        // iOS can go inactive -> active without entering the background.
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
         intervalRef.current = setInterval(sendHeartbeat, interval);
       }
     });
