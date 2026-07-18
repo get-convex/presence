@@ -65,17 +65,23 @@ afterEach(() => {
 });
 
 test("returning from inactive replaces the heartbeat interval", async () => {
+  const setIntervalSpy = vi.spyOn(globalThis, "setInterval");
+  const clearIntervalSpy = vi.spyOn(globalThis, "clearInterval");
   const root = createRoot(document.createElement("div"));
   await act(async () => root.render(<Component />));
 
-  expect(vi.getTimerCount()).toBe(1);
+  const initialInterval =
+    setIntervalSpy.mock.results[setIntervalSpy.mock.results.length - 1]?.value;
 
   act(() => appState.emit("inactive"));
-  expect(vi.getTimerCount()).toBe(1);
+  expect(clearIntervalSpy).not.toHaveBeenCalled();
 
   act(() => appState.emit("active"));
-  expect(vi.getTimerCount()).toBe(1);
+  expect(clearIntervalSpy).toHaveBeenCalledWith(initialInterval);
+  const replacementInterval =
+    setIntervalSpy.mock.results[setIntervalSpy.mock.results.length - 1]?.value;
+  expect(replacementInterval).not.toBe(initialInterval);
 
   await act(async () => root.unmount());
-  expect(vi.getTimerCount()).toBe(0);
+  expect(clearIntervalSpy).toHaveBeenCalledWith(replacementInterval);
 });
