@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.4.0-alpha.2
+
 ## 0.4.0-alpha.1
 
 ## 0.4.0-alpha.0
