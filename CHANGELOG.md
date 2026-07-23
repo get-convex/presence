@@ -2,14 +2,14 @@
 
 ## 0.4.0
 
-## 0.4.0-alpha.2
-
-## 0.4.0-alpha.1
-
-## 0.4.0-alpha.0
-
 - Replaces per-session scheduled disconnects with a deployment-wide batch
-  worker.
+  worker, increasing scalability by avoiding one scheduled function per
+  session.
+- Upgrades in place without a migration; pre-upgrade sessions get a grace
+  deadline and legacy scheduled disconnects are ignored.
+- Fixes React Strict Mode remount races that could briefly disconnect an
+  active session.
+- Prevents duplicate heartbeat intervals in React Native.
 
 ## 0.3.2
 
